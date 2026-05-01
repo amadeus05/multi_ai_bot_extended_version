@@ -23,6 +23,10 @@ class BarrierPolicy:
     def slippage(self) -> float:
         return float(self._cfg.barrier.slippage)
 
+    def apply_barriers_to_frame(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Добавляет barrier_stop_pct / barrier_take_pct по всему фрейму (dataset pipeline, parquet)."""
+        return attach_barrier_columns(df.copy(), self._cfg)
+
     def barriers_for_last_row(self, df: pd.DataFrame | None) -> tuple[float, float] | None:
         """
         Барьеры для последней строки окна фич (как в parquet после пайплайна).
@@ -34,7 +38,7 @@ class BarrierPolicy:
         if not required.issubset(set(df.columns)):
             return None
         try:
-            out = attach_barrier_columns(df.copy(), self._cfg)
+            out = self.apply_barriers_to_frame(df)
         except (ValueError, KeyError):
             stop = float(self._cfg.barrier.stop_pct)
             take = float(self._cfg.barrier.take_pct)

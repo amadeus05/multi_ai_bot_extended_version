@@ -8,7 +8,8 @@ import pandas as pd
 
 from core.config.dataset_config import DatasetConfig
 from domain.ml.features import MasterFeatureBuilder
-from domain.ml.labeling import LabelingConfig, attach_barrier_columns, finalize_feature_frame, triple_barrier_labeling
+from domain.ml.labeling import LabelingConfig, finalize_feature_frame, triple_barrier_labeling
+from domain.ml.labeling.barrier_policy import BarrierPolicy
 from infrastructure.exchanges.bybit.bybit_service import BybitService
 from infrastructure.persistence.parquet_writer import ParquetWriter
 
@@ -19,6 +20,7 @@ class DatasetPipeline:
     def __init__(self, cfg: DatasetConfig, labeling_cfg: LabelingConfig | None = None) -> None:
         self.cfg = cfg
         self.labeling_cfg = labeling_cfg or LabelingConfig.from_env()
+        self._barrier_policy = BarrierPolicy(self.labeling_cfg)
         self.writer = ParquetWriter(cfg.output_dir)
         self.bybit = BybitService()
         self.feature_builder = MasterFeatureBuilder()
@@ -87,7 +89,7 @@ class DatasetPipeline:
                 logger.warning("[%s] feature frame is empty, skipping symbol", symbol)
                 continue
             logger.info("[%s] applying barrier columns...", symbol)
-            frame = attach_barrier_columns(frame, self.labeling_cfg)
+            frame = self._barrier_policy.apply_barriers_to_frame(frame)
             logger.info("[%s] applying triple barrier labeling...", symbol)
             frame = triple_barrier_labeling(frame, self.labeling_cfg)
             feature_columns = list(feature_result.feature_columns)
