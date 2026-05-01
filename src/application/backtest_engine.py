@@ -6,7 +6,7 @@ from __future__ import annotations
 Порядок времени на шаг i (current_ts=T, next_ts=T+1):
   - Эквити в точке T: cash + MTM позиций по close(T).
   - Выходы: TP/SL по OHLC следующей свечи T+1 (путь цены после входа).
-  - Входы: фичи и barrier_* для сайза только из строки T; исполнение по open следующей свечи ± slippage.
+  - Входы: фичи и barrier_* для сайза только из строки T; исполнение цен — SimulatedExchange (open следующей свечи ± slippage).
 
 В ``model.predict()`` передаются только колонки из ``*_features.json`` (не весь parquet).
 Строка parquet может содержать Target/barriers для сайзинга — таргет в LGB не попадает.
@@ -26,6 +26,8 @@ from domain.risk.sizing import (
     cap_notional_to_available_margin,
     compute_barrier_position_notional,
 )
+from core.types.enums import OrderSide
+from infrastructure.exchanges.simulation.simulated_exchange import SimulatedExchange
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
@@ -42,6 +44,11 @@ class BacktestEngine:
         self.config = config
         self.strategy = strategy
         self.exit_manager = exit_manager
+        self._sim = SimulatedExchange(
+            commission=float(config.taker_com),
+            slippage=float(config.slippage),
+            leverage=float(config.leverage),
+        )
 
     @staticmethod
     def _trade_log_colorize(text: str, color: str) -> str:
@@ -221,7 +228,7 @@ class BacktestEngine:
                 if closed is None:
                     continue
                 exit_price, reason = closed
-                pnl_pct, pnl_abs, commission = self._compute_trade_outcome(position, exit_price)
+                pnl_pct, pnl_abs, commission = self._sim.trade_outcome_from_prices(position, exit_price)
                 previous_loss_streak = consecutive_loss_count
 
                 used_margin = max(0.0, used_margin - float(position["margin"]))
@@ -349,18 +356,14 @@ class BacktestEngine:
                 if not order:
                     continue
                     
-                from core.types.enums import OrderSide
                 signal = 1 if order.side == OrderSide.BUY else -1
                 p_long = float(pred.get("p_long", 0.5))
                 p_short = float(pred.get("p_short", 0.5))
                 direction_prob = max(p_long, p_short)
                 signal_gap = abs(p_long - p_short)
 
-                entry_price = (
-                    ctx["next_open"] * (1.0 + float(self.config.slippage))
-                    if signal == 1
-                    else ctx["next_open"] * (1.0 - float(self.config.slippage))
-                )
+                entry_side = OrderSide.BUY if signal == 1 else OrderSide.SELL
+                entry_price = self._sim.market_fill_price(float(ctx["next_open"]), entry_side)
                 position_notional, required_margin = compute_barrier_position_notional(
                     snapshot_balance,
                     effective_risk,
@@ -458,7 +461,9 @@ class BacktestEngine:
                 closed_intra = self._try_close_position(positions[candidate["symbol"]], ctx_intra)
                 if closed_intra is not None:
                     exit_price_intra, reason_intra = closed_intra
-                    pnl_pct_intra, pnl_abs_intra, commission_intra = self._compute_trade_outcome(positions[candidate["symbol"]], exit_price_intra)
+                    pnl_pct_intra, pnl_abs_intra, commission_intra = self._sim.trade_outcome_from_prices(
+                        positions[candidate["symbol"]], exit_price_intra
+                    )
                     previous_loss_streak_intra = consecutive_loss_count
 
                     used_margin = max(0.0, used_margin - float(positions[candidate["symbol"]]["margin"]))
@@ -560,12 +565,9 @@ class BacktestEngine:
             mark_price = last_mark.get(symbol)
             if mark_price is None:
                 continue
-            exit_price = (
-                mark_price * (1.0 - float(self.config.slippage))
-                if int(position["dir"]) == 1
-                else mark_price * (1.0 + float(self.config.slippage))
-            )
-            pnl_pct, pnl_abs, commission = self._compute_trade_outcome(position, exit_price)
+            close_side = OrderSide.SELL if int(position["dir"]) == 1 else OrderSide.BUY
+            exit_price = self._sim.market_fill_price(float(mark_price), close_side)
+            pnl_pct, pnl_abs, commission = self._sim.trade_outcome_from_prices(position, exit_price)
             used_margin = max(0.0, used_margin - float(position["margin"]))
             balance += pnl_abs
 
@@ -945,27 +947,6 @@ class BacktestEngine:
         edge = max(0.0, float(direction_prob) - float(self.config.directional_proba_threshold))
         return edge * 10.0 + float(signal_gap)
 
-    def _compute_net_pnl_pct(self, direction: int, entry_price: float, exit_price: float) -> float:
-        if direction == 1:
-            raw = (exit_price - entry_price) / entry_price
-        else:
-            raw = (entry_price - exit_price) / entry_price
-        return float(raw - (float(self.config.taker_com) + float(self.config.taker_com)))
-
-    @staticmethod
-    def _mark_to_market_return_pct(direction: int, entry_price: float, mark_price: float) -> float:
-        """Без комиссий — только для нереализованного PnL в эквити (иначе «ломается» шаг при входе)."""
-        if direction == 1:
-            return float((mark_price - entry_price) / entry_price)
-        return float((entry_price - mark_price) / entry_price)
-
-    def _compute_trade_outcome(self, position: dict, exit_price: float) -> tuple[float, float, float]:
-        pnl_pct = self._compute_net_pnl_pct(int(position["dir"]), float(position["entry"]), float(exit_price))
-        position_notional = float(position["size"])
-        commission = position_notional * (float(self.config.taker_com) + float(self.config.taker_com))
-        pnl_abs = position_notional * pnl_pct
-        return float(pnl_pct), float(pnl_abs), float(commission)
-
     def _compute_portfolio_equity(self, balance: float, positions: dict, mark_prices: dict[str, float]) -> float:
         equity = float(balance)
         for symbol, position in positions.items():
@@ -974,7 +955,9 @@ class BacktestEngine:
             mark = mark_prices.get(symbol)
             if mark is None:
                 continue
-            mtm_pct = self._mark_to_market_return_pct(int(position["dir"]), float(position["entry"]), float(mark))
+            mtm_pct = SimulatedExchange.mark_to_market_return_pct(
+                int(position["dir"]), float(position["entry"]), float(mark)
+            )
             equity += float(position["size"]) * mtm_pct
         return float(equity)
 
