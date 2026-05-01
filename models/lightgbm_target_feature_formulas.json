@@ -1,0 +1,335 @@
+{
+  "feature_columns": [
+    "adx_4h",
+    "atr_ratio_1h",
+    "cross_sectional_rank_ema_fast_slow_1h",
+    "distance_to_resistance_1h",
+    "distance_to_support_1h",
+    "ema_fast_slow",
+    "ema_slope_4h",
+    "flat_efficiency_1h_24",
+    "funding_rate_8h",
+    "market_breadth_ema_fast_slow_1h",
+    "market_breadth_pos_return_4h_3",
+    "mcc_sign_agreement_btc_24h",
+    "premium_index_change_24h",
+    "price_position_1h",
+    "price_position_4h",
+    "range_center_distance_atr_1h_48",
+    "realized_vol_4h_returns_20",
+    "return_4h_14",
+    "rsi_1h",
+    "volatility_regime_change_1h",
+    "zscore_vs_vwap_4h"
+  ],
+  "features": [
+    {
+      "name": "adx_4h",
+      "block": "htf",
+      "description": "Lagged ADX on the higher timeframe.",
+      "formula_template": "shift(ADX(high, low, close, 14), 1)",
+      "resolved_formula": "shift(ADX(high, low, close, 14), 1)",
+      "params": {},
+      "inputs": [
+        "high",
+        "low",
+        "close"
+      ],
+      "dependencies": [],
+      "shift": 1
+    },
+    {
+      "name": "atr_ratio_1h",
+      "block": "regime",
+      "description": "Short ATR relative to long ATR.",
+      "formula_template": "ATR(high, low, close, 14) / ATR(high, low, close, 100)",
+      "resolved_formula": "ATR(high, low, close, 14) / ATR(high, low, close, 100)",
+      "params": {},
+      "inputs": [
+        "high",
+        "low",
+        "close"
+      ],
+      "dependencies": [],
+      "shift": 0
+    },
+    {
+      "name": "cross_sectional_rank_ema_fast_slow_1h",
+      "block": "cross_sectional",
+      "description": "Cross-sectional rank of the EMA spread signal on each main-timeframe bar.",
+      "formula_template": "normalized_rank(ema_fast_slow across symbols at timestamp)",
+      "resolved_formula": "normalized_rank(ema_fast_slow across symbols at timestamp)",
+      "params": {},
+      "inputs": [],
+      "dependencies": [
+        "ema_fast_slow"
+      ],
+      "shift": 0
+    },
+    {
+      "name": "distance_to_resistance_1h",
+      "block": "structure",
+      "description": "Distance to the recent resistance level in ATR units.",
+      "formula_template": "(rolling_max(high, 24) - close) / ATR(high, low, close, 14)",
+      "resolved_formula": "(rolling_max(high, 24) - close) / ATR(high, low, close, 14)",
+      "params": {},
+      "inputs": [
+        "close",
+        "high",
+        "low"
+      ],
+      "dependencies": [],
+      "shift": 0
+    },
+    {
+      "name": "distance_to_support_1h",
+      "block": "structure",
+      "description": "Distance to the recent support level in ATR units.",
+      "formula_template": "(close - rolling_min(low, 24)) / ATR(high, low, close, 14)",
+      "resolved_formula": "(close - rolling_min(low, 24)) / ATR(high, low, close, 14)",
+      "params": {},
+      "inputs": [
+        "close",
+        "high",
+        "low"
+      ],
+      "dependencies": [],
+      "shift": 0
+    },
+    {
+      "name": "ema_fast_slow",
+      "block": "momentum",
+      "description": "Relative spread between fast and slow EMA.",
+      "formula_template": "(ema(close, {EMA_FAST_WINDOW}) - ema(close, {EMA_SLOW_WINDOW})) / ema(close, {EMA_SLOW_WINDOW})",
+      "resolved_formula": "(ema(close, 12) - ema(close, 48)) / ema(close, 48)",
+      "params": {
+        "EMA_FAST_WINDOW": 12,
+        "EMA_SLOW_WINDOW": 48
+      },
+      "inputs": [
+        "close"
+      ],
+      "dependencies": [],
+      "shift": 0
+    },
+    {
+      "name": "ema_slope_4h",
+      "block": "htf",
+      "description": "Lagged slope of the HTF EMA baseline normalized by ATR.",
+      "formula_template": "shift(linear_regression_slope(ema(close, {EMA_SLOPE_BASE_WINDOW_4H}), {EMA_SLOPE_WINDOW_4H}) / ATR(high, low, close, 14), 1)",
+      "resolved_formula": "shift(linear_regression_slope(ema(close, 21), 6) / ATR(high, low, close, 14), 1)",
+      "params": {
+        "EMA_SLOPE_BASE_WINDOW_4H": 21,
+        "EMA_SLOPE_WINDOW_4H": 6
+      },
+      "inputs": [
+        "close",
+        "high",
+        "low"
+      ],
+      "dependencies": [],
+      "shift": 1
+    },
+    {
+      "name": "flat_efficiency_1h_24",
+      "block": "structure",
+      "description": "Inverse of the 24-bar trend efficiency.",
+      "formula_template": "1 - clip(trend_efficiency(close, 24), 0, 1)",
+      "resolved_formula": "1 - clip(trend_efficiency(close, 24), 0, 1)",
+      "params": {},
+      "inputs": [
+        "close"
+      ],
+      "dependencies": [],
+      "shift": 0
+    },
+    {
+      "name": "funding_rate_8h",
+      "block": "funding",
+      "description": "Raw funding rate aligned to the main timeframe.",
+      "formula_template": "funding_rate",
+      "resolved_formula": "funding_rate",
+      "params": {},
+      "inputs": [
+        "funding_rate"
+      ],
+      "dependencies": [],
+      "shift": 0
+    },
+    {
+      "name": "market_breadth_ema_fast_slow_1h",
+      "block": "market_context",
+      "description": "Share of symbols with positive EMA spread on the main timeframe.",
+      "formula_template": "mean(1{ema_fast_slow > 0} across symbols at timestamp)",
+      "resolved_formula": "mean(1{ema_fast_slow > 0} across symbols at timestamp)",
+      "params": {},
+      "inputs": [],
+      "dependencies": [
+        "ema_fast_slow"
+      ],
+      "shift": 0
+    },
+    {
+      "name": "market_breadth_pos_return_4h_3",
+      "block": "market_context",
+      "description": "Share of symbols with positive 3-bar HTF return.",
+      "formula_template": "mean(1{return_4h_3 > 0} across symbols at timestamp)",
+      "resolved_formula": "mean(1{return_4h_3 > 0} across symbols at timestamp)",
+      "params": {},
+      "inputs": [],
+      "dependencies": [
+        "return_4h_3"
+      ],
+      "shift": 0
+    },
+    {
+      "name": "mcc_sign_agreement_btc_24h",
+      "block": "regime",
+      "description": "Placeholder \u0438\u0437 legacy train.",
+      "formula_template": "0",
+      "resolved_formula": "0",
+      "params": {},
+      "inputs": [
+        "close"
+      ],
+      "dependencies": [],
+      "shift": 0
+    },
+    {
+      "name": "premium_index_change_24h",
+      "block": "premium_index",
+      "description": "Premium index change over the configured lookback.",
+      "formula_template": "premium_index_close - premium_index_close.shift({PREMIUM_INDEX_CHANGE_LOOKBACK_1H})",
+      "resolved_formula": "premium_index_close - premium_index_close.shift(24)",
+      "params": {
+        "PREMIUM_INDEX_CHANGE_LOOKBACK_1H": 24
+      },
+      "inputs": [
+        "premium_index_close"
+      ],
+      "dependencies": [],
+      "shift": 0
+    },
+    {
+      "name": "price_position_1h",
+      "block": "structure",
+      "description": "Normalized position inside the recent 24-bar range.",
+      "formula_template": "(close - rolling_min(low, 24)) / (rolling_max(high, 24) - rolling_min(low, 24))",
+      "resolved_formula": "(close - rolling_min(low, 24)) / (rolling_max(high, 24) - rolling_min(low, 24))",
+      "params": {},
+      "inputs": [
+        "close",
+        "high",
+        "low"
+      ],
+      "dependencies": [],
+      "shift": 0
+    },
+    {
+      "name": "price_position_4h",
+      "block": "htf",
+      "description": "Lagged normalized position inside the recent HTF range.",
+      "formula_template": "shift((close - rolling_min(low, {RANGE_WINDOW_4H})) / (rolling_max(high, {RANGE_WINDOW_4H}) - rolling_min(low, {RANGE_WINDOW_4H})), 1)",
+      "resolved_formula": "shift((close - rolling_min(low, 14)) / (rolling_max(high, 14) - rolling_min(low, 14)), 1)",
+      "params": {
+        "RANGE_WINDOW_4H": 14
+      },
+      "inputs": [
+        "close",
+        "high",
+        "low"
+      ],
+      "dependencies": [],
+      "shift": 1
+    },
+    {
+      "name": "range_center_distance_atr_1h_48",
+      "block": "structure",
+      "description": "Distance from close to the center of the 48-bar range.",
+      "formula_template": "(close - ((rolling_max(high, 48) + rolling_min(low, 48)) / 2)) / ATR(high, low, close, 14)",
+      "resolved_formula": "(close - ((rolling_max(high, 48) + rolling_min(low, 48)) / 2)) / ATR(high, low, close, 14)",
+      "params": {},
+      "inputs": [
+        "close",
+        "high",
+        "low"
+      ],
+      "dependencies": [],
+      "shift": 0
+    },
+    {
+      "name": "realized_vol_4h_returns_20",
+      "block": "htf",
+      "description": "Lagged realized volatility of 4H returns.",
+      "formula_template": "shift(rolling_std(log(close / close.shift(1)), {REALIZED_VOL_WINDOW_4H}), 1)",
+      "resolved_formula": "shift(rolling_std(log(close / close.shift(1)), 20), 1)",
+      "params": {
+        "REALIZED_VOL_WINDOW_4H": 20
+      },
+      "inputs": [
+        "close"
+      ],
+      "dependencies": [],
+      "shift": 1
+    },
+    {
+      "name": "return_4h_14",
+      "block": "htf",
+      "description": "Lagged 14-bar HTF log return.",
+      "formula_template": "shift(log(close / close.shift(14)), 1)",
+      "resolved_formula": "shift(log(close / close.shift(14)), 1)",
+      "params": {},
+      "inputs": [
+        "close"
+      ],
+      "dependencies": [],
+      "shift": 1
+    },
+    {
+      "name": "rsi_1h",
+      "block": "regime",
+      "description": "Relative Strength Index (14).",
+      "formula_template": "RSI(close, 14) \u043d\u0430 \u043e\u0441\u043d\u043e\u0432\u043d\u043e\u043c \u0422\u0424",
+      "resolved_formula": "RSI(close, 14) \u043d\u0430 \u043e\u0441\u043d\u043e\u0432\u043d\u043e\u043c \u0422\u0424",
+      "params": {},
+      "inputs": [
+        "close"
+      ],
+      "dependencies": [],
+      "shift": 0
+    },
+    {
+      "name": "volatility_regime_change_1h",
+      "block": "regime",
+      "description": "Short-vs-long ATR ratio used as a regime shift proxy.",
+      "formula_template": "ATR(high, low, close, 6) / ATR(high, low, close, 48)",
+      "resolved_formula": "ATR(high, low, close, 6) / ATR(high, low, close, 48)",
+      "params": {},
+      "inputs": [
+        "high",
+        "low",
+        "close"
+      ],
+      "dependencies": [],
+      "shift": 0
+    },
+    {
+      "name": "zscore_vs_vwap_4h",
+      "block": "htf",
+      "description": "Lagged VWAP distance z-score on the higher timeframe.",
+      "formula_template": "shift((close - rolling_vwap(close, high, low, volume, {VWAP_WINDOW_4H}) - rolling_mean(close - rolling_vwap(close, high, low, volume, {VWAP_WINDOW_4H}), {VWAP_WINDOW_4H})) / rolling_std(close - rolling_vwap(close, high, low, volume, {VWAP_WINDOW_4H}), {VWAP_WINDOW_4H}), 1)",
+      "resolved_formula": "shift((close - rolling_vwap(close, high, low, volume, 20) - rolling_mean(close - rolling_vwap(close, high, low, volume, 20), 20)) / rolling_std(close - rolling_vwap(close, high, low, volume, 20), 20), 1)",
+      "params": {
+        "VWAP_WINDOW_4H": 20
+      },
+      "inputs": [
+        "close",
+        "high",
+        "low",
+        "volume"
+      ],
+      "dependencies": [],
+      "shift": 1
+    }
+  ]
+}

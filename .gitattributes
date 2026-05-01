@@ -1,0 +1,13 @@
+# В репозитории и при checkout использовать LF для текстовых файлов (кроссплатформа)
+* text=auto eol=lf
+
+# Явные бинарники
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.pdf binary
+*.zip binary
+*.gz binary

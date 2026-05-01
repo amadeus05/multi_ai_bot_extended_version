@@ -1,0 +1,9 @@
+pandas
+numpy
+requests
+pyarrow
+matplotlib
+scikit-learn
+lightgbm
+joblib
+websocket-client

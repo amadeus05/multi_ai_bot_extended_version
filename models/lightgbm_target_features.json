@@ -1,0 +1,38 @@
+{
+  "feature_columns": [
+    "adx_4h",
+    "atr_ratio_1h",
+    "cross_sectional_rank_ema_fast_slow_1h",
+    "distance_to_resistance_1h",
+    "distance_to_support_1h",
+    "ema_fast_slow",
+    "ema_slope_4h",
+    "flat_efficiency_1h_24",
+    "funding_rate_8h",
+    "market_breadth_ema_fast_slow_1h",
+    "market_breadth_pos_return_4h_3",
+    "mcc_sign_agreement_btc_24h",
+    "premium_index_change_24h",
+    "price_position_1h",
+    "price_position_4h",
+    "range_center_distance_atr_1h_48",
+    "realized_vol_4h_returns_20",
+    "return_4h_14",
+    "rsi_1h",
+    "volatility_regime_change_1h",
+    "zscore_vs_vwap_4h"
+  ],
+  "symbols": [
+    "BTC/USDT",
+    "ETH/USDT",
+    "SOL/USDT"
+  ],
+  "label_mapping": {
+    "short": 0,
+    "long": 1
+  },
+  "inverse_label_mapping": {
+    "0": -1,
+    "1": 1
+  }
+}

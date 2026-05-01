@@ -1,0 +1,61 @@
+# Secrets & локальное окружение
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+venv/
+ENV/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+
+# Тестирование и покрытие
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE / редакторы
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Логи и временное
+*.log
+/tmp/
+/tmp.*
+
+# Артефакты обучения (бэкапы и большие файлы моделей — не в репозитории)
+models/backups/
+*.pkl
+*.joblib
+*.pickle
+
+# Данные (сырые датасеты обычно не коммитят)
+data/raw/
+
+# ОС
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+
+.temp_code/
+.backtest_charts/
