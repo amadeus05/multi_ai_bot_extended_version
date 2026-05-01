@@ -22,6 +22,10 @@ import numpy as np
 import pandas as pd
 
 from domain.strategy.signal_resolver import resolve_directional_signal
+from domain.risk.sizing import (
+    cap_notional_to_available_margin,
+    compute_barrier_position_notional,
+)
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
@@ -357,9 +361,12 @@ class BacktestEngine:
                     if signal == 1
                     else ctx["next_open"] * (1.0 - float(self.config.slippage))
                 )
-                risk_capital = snapshot_balance * effective_risk
-                position_notional = min(risk_capital / stop_pct, snapshot_balance * float(self.config.leverage))
-                required_margin = position_notional / max(1e-9, float(self.config.leverage))
+                position_notional, required_margin = compute_barrier_position_notional(
+                    snapshot_balance,
+                    effective_risk,
+                    float(stop_pct),
+                    float(self.config.leverage),
+                )
                 if position_notional < float(self.config.min_position_notional):
                     continue
                 score = self._build_entry_score(direction_prob, signal_gap)
@@ -394,8 +401,12 @@ class BacktestEngine:
                 if available_balance <= 0:
                     break
 
-                required_margin = min(candidate["required_margin"], available_balance)
-                position_notional = min(candidate["position_notional"], required_margin * float(self.config.leverage))
+                position_notional, required_margin = cap_notional_to_available_margin(
+                    candidate["position_notional"],
+                    candidate["required_margin"],
+                    available_balance,
+                    float(self.config.leverage),
+                )
                 if (
                     required_margin <= 0
                     or position_notional < float(self.config.min_position_notional)

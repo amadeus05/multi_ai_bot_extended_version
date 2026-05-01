@@ -1,6 +1,10 @@
 from core.types.enums import OrderSide, PositionSide
 from domain.risk.models.risk_context import RiskContext
 from domain.risk.rules.base_rule import RiskRule
+from domain.risk.sizing import (
+    cap_notional_to_available_margin,
+    compute_barrier_position_notional,
+)
 
 
 class PositionSizingRule(RiskRule):
@@ -20,8 +24,17 @@ class PositionSizingRule(RiskRule):
                 ctx.order.amount = min(float(ctx.order.amount), float(position.amount))
                 return ctx.order.amount > 0
 
-        available_cash = float(ctx.portfolio.cash.get(ctx.quote_asset, 0.0))
-        if available_cash <= 0:
+        meta = getattr(ctx.order, "meta", None) or {}
+        stop_pct = meta.get("barrier_stop_pct")
+        try:
+            sp = float(stop_pct) if stop_pct is not None else None
+        except (TypeError, ValueError):
+            sp = None
+        if sp is None or sp <= 0 or not (sp == sp):
+            return False
+
+        balance_for_risk = float(ctx.portfolio.cash.get(ctx.quote_asset, 0.0))
+        if balance_for_risk <= 0:
             return False
 
         effective_risk = ctx.profile.risk_per_trade
@@ -31,11 +44,24 @@ class PositionSizingRule(RiskRule):
         ):
             effective_risk = ctx.profile.reduced_risk_per_trade
 
-        target_notional = available_cash * effective_risk * ctx.profile.leverage
-        if target_notional <= 0:
+        position_notional, required_margin = compute_barrier_position_notional(
+            balance_for_risk,
+            effective_risk,
+            sp,
+            ctx.profile.leverage,
+        )
+        position_notional, required_margin = cap_notional_to_available_margin(
+            position_notional,
+            required_margin,
+            balance_for_risk,
+            ctx.profile.leverage,
+        )
+        if position_notional < float(ctx.profile.min_position_notional):
+            return False
+        if required_margin <= 0 or position_notional <= 0:
             return False
 
-        amount = target_notional / price
+        amount = position_notional / price
         if amount <= 0 or amount != amount:
             return False
 

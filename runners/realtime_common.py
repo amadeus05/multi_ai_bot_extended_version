@@ -6,6 +6,8 @@ from core.interfaces.exchange import Exchange
 from core.interfaces.model import Model
 from domain.execution.execution_service import ExecutionService
 from domain.portfolio.portfolio_manager import PortfolioManager
+from domain.ml.labeling.barrier_policy import BarrierPolicy
+from domain.ml.labeling.models import LabelingConfig
 from domain.risk.adaptive_risk_manager import AdaptiveRiskManager
 from domain.risk.models.risk_profile import RiskProfile
 from domain.strategy.strategy_engine import Strategy
@@ -22,12 +24,9 @@ def build_realtime_orchestrator(
     strategy: Strategy,
 ) -> RealtimeOrchestrator:
     data_provider = WebSocketProvider(cfg.ws_url, timeframe=cfg.timeframe, htf_timeframe=cfg.htf_timeframe)
-    risk_manager = AdaptiveRiskManager(
-        profile=RiskProfile(
-            leverage=cfg.leverage,
-            risk_per_trade=cfg.risk_per_trade,
-        )
-    )
+    risk_manager = AdaptiveRiskManager(profile=RiskProfile.from_env())
+    labeling_cfg = LabelingConfig.from_env()
+    barrier_policy = BarrierPolicy(labeling_cfg)
     engine = TradingEngine(
         exchange=exchange,
         data_provider=data_provider,
@@ -36,7 +35,8 @@ def build_realtime_orchestrator(
         risk_manager=risk_manager,
         portfolio=PortfolioManager(cash={"USDT": initial_capital}),
         execution=ExecutionService(),
-        exit_manager=ExitManager(slippage=getattr(cfg, "slippage", 0.0003)),
+        exit_manager=ExitManager(slippage=barrier_policy.slippage),
+        barrier_policy=barrier_policy,
     )
     return RealtimeOrchestrator(
         engine=engine,

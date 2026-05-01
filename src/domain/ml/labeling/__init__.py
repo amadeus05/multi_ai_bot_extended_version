@@ -1,3 +1,4 @@
+from domain.ml.labeling.barrier_policy import BarrierPolicy
 from domain.ml.labeling.barrier_target_labeling import (
     BASE_OUTPUT_COLUMNS,
     BARRIER_OUTPUT_COLUMNS,
@@ -11,6 +12,7 @@ from domain.ml.labeling.models import AdaptiveHorizonConfig, BarrierConfig, Labe
 __all__ = [
     "AdaptiveHorizonConfig",
     "BarrierConfig",
+    "BarrierPolicy",
     "LabelingConfig",
     "BASE_OUTPUT_COLUMNS",
     "BARRIER_OUTPUT_COLUMNS",

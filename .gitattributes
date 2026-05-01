@@ -11,3 +11,6 @@
 *.pdf binary
 *.zip binary
 *.gz binary
+*.joblib binary
+*.pkl binary
+*.pickle binary

@@ -7,6 +7,8 @@ from core.interfaces.model import Model
 from domain.execution.execution_service import ExecutionService
 from domain.portfolio.portfolio_manager import PortfolioManager
 from domain.risk.risk_manager import RiskManager
+from domain.ml.labeling.barrier_policy import BarrierPolicy
+from domain.ml.labeling.models import LabelingConfig
 from domain.strategy.strategy_engine import Strategy
 
 
@@ -22,8 +24,10 @@ class TradingEngine:
         execution: ExecutionService,
         exit_manager=None,
         execution_listener=None,
+        barrier_policy: BarrierPolicy | None = None,
     ) -> None:
         self.exit_manager = exit_manager
+        self._barrier_policy = barrier_policy or BarrierPolicy(LabelingConfig.from_env())
         self._deps = {
             "exchange": exchange,
             "data": data_provider,
@@ -88,6 +92,9 @@ class TradingEngine:
 
         df = await self._deps["data"].warmup(tick.symbol, self._deps["model"].required_bars())
         prediction = self._deps["model"].predict(df)
+        bp = self._barrier_policy.barriers_for_last_row(df)
+        if bp is not None:
+            prediction["barrier_stop_pct"], prediction["barrier_take_pct"] = bp
         raw_order = self._deps["strategy"].on_prediction(tick, prediction, self._deps["portfolio"])
         if raw_order is None:
             return
