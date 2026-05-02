@@ -1,5 +1,5 @@
 """
-Сайзинг под triple-barrier: риск на сделку, stop_pct, плечо — общее ядро с BacktestEngine.
+Сайзинг под triple-barrier: риск на сделку, stop_pct, плечо — общее ядро для TradingEngine/backtest.
 
 - compute_barrier_position_notional / cap_notional_to_available_margin — низкоуровневые шаги;
 - barrier_nominal_under_margin_cap — оба шага подряд (как второй проход открытия в бэктесте и live Risk);
@@ -71,7 +71,7 @@ def barrier_nominal_under_margin_cap(
     leverage: float,
 ) -> tuple[float, float]:
     """
-    Два шага как в BacktestEngine (и как в PositionSizingRule):
+    Два шага как в TradingEngine backtest (и как в PositionSizingRule):
     номинал от полного snapshot, затем ограничение по свободной марже.
     """
     n, m = compute_barrier_position_notional(

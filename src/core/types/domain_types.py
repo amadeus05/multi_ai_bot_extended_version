@@ -14,6 +14,10 @@ class Tick:
     ask: float
     price: float
     volume: float
+    open: Optional[float] = None
+    high: Optional[float] = None
+    low: Optional[float] = None
+    close: Optional[float] = None
 
 
 @dataclass

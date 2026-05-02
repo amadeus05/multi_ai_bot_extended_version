@@ -12,7 +12,7 @@ ORDER_META_SIM_FILL_PRICE_FINAL = "sim_fill_price_final"
 class SimulatedExchange(Exchange):
     """
     Исполнение маркет-ордеров: референсная цена ± slippage, комиссия taker на ногу.
-    Round-trip PnL%: вычитается 2 * commission (как в BacktestEngine).
+    Round-trip PnL%: вычитается 2 * commission.
     """
 
     def __init__(self, commission: float = 0.0004, slippage: float = 0.0003, leverage: float = 1.0):
@@ -50,7 +50,7 @@ class SimulatedExchange(Exchange):
         return float(position_notional) * (2.0 * self._commission)
 
     def trade_outcome_from_prices(self, position: dict, exit_price: float) -> tuple[float, float, float]:
-        """position: dir, entry, size — как в BacktestEngine. -> pnl_pct, pnl_abs, commission."""
+        """position: dir, entry, size. -> pnl_pct, pnl_abs, commission."""
         pnl_pct = self.net_pnl_pct_round_trip(int(position["dir"]), float(position["entry"]), float(exit_price))
         notional = float(position["size"])
         commission = self.round_turn_commission_on_notional(notional)

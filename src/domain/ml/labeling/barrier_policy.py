@@ -34,6 +34,16 @@ class BarrierPolicy:
         """
         if df is None or df.empty:
             return None
+        if {"barrier_stop_pct", "barrier_take_pct"}.issubset(df.columns):
+            last_input = df.iloc[-1]
+            try:
+                sp = float(last_input.get("barrier_stop_pct"))
+                tp = float(last_input.get("barrier_take_pct"))
+            except (TypeError, ValueError):
+                sp = float("nan")
+                tp = float("nan")
+            if sp > 0 and sp == sp and tp == tp:
+                return float(sp), float(tp)
         required = {"open", "high", "low", "close"}
         if not required.issubset(set(df.columns)):
             return None

@@ -1,5 +1,7 @@
 from dataclasses import dataclass, field
 
+import numpy as np
+
 from core.types.enums import OrderSide, PositionSide
 from core.types.domain_types import Position, Trade
 
@@ -133,7 +135,7 @@ class PortfolioManager:
                 }
             )
 
-        if new_signed_qty == 0:
+        if abs(new_signed_qty) <= 1e-12:
             self.positions = [position for position in self.positions if position.symbol != trade.symbol]
             self._active_trade_number_by_symbol.pop(trade.symbol, None)
             self._entry_fee_pool_by_symbol.pop(trade.symbol, None)

@@ -62,7 +62,7 @@ python runners/run_dataset_pipeline.py
 ## 5) Запуск бэктеста
 
 ```bash
-python runners/run_backtest.py
+python runners/run_backtest_walk_forward.py
 ```
 
 ## 6) Запуск paper/live

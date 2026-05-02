@@ -44,31 +44,39 @@ class TradingEngine:
     def set_execution_listener(self, listener) -> None:
         self._execution_listener = listener
 
-    async def _handle_tick(self, tick) -> None:
+    @staticmethod
+    def _tick_price(tick, name: str, fallback: float) -> float:
+        value = getattr(tick, name, None)
+        if value is None:
+            return float(fallback)
+        return float(value)
+
+    async def _notify_execution(self, trade, portfolio) -> None:
+        if self._execution_listener is None:
+            return
+        maybe_coro = self._execution_listener(trade, portfolio)
+        if inspect.isawaitable(maybe_coro):
+            await maybe_coro
+
+    async def _process_exit_for_tick(self, tick, *, reason_suffix: str | None = None) -> bool:
         risk = self._deps["risk"]
         portfolio = self._deps["portfolio"]
         exchange = self._deps["exchange"]
         execution = self._deps["execution"]
-        
-        if hasattr(risk, "set_current_bar"):
-            risk.set_current_bar(getattr(tick, "ts", None))
-            
-        # 1. Process exits first (Phase 4)
         if self.exit_manager is not None:
             pos = portfolio.get_position(tick.symbol)
             if pos is not None:
-                # In live, next_open/high/low are all just the current tick price
                 exit_price, reason = self.exit_manager.check_causal_exit(
                     position=pos,
-                    next_open=tick.price,
-                    next_high=tick.price,
-                    next_low=tick.price,
+                    next_open=self._tick_price(tick, "open", tick.price),
+                    next_high=self._tick_price(tick, "high", tick.price),
+                    next_low=self._tick_price(tick, "low", tick.price),
                     stop_pct=pos.meta.get("barrier_stop_pct", float('inf')) if pos.meta else float('inf'),
                     take_pct=pos.meta.get("barrier_take_pct", float('inf')) if pos.meta else float('inf')
                 )
                 if exit_price is not None:
                     from core.types.enums import OrderSide
-                    exit_side = OrderSide.SELL if pos.side.value == "LONG" else OrderSide.BUY
+                    exit_side = OrderSide.SELL if pos.side.value == "long" else OrderSide.BUY
                     from core.types.domain_types import Order
                     from infrastructure.exchanges.simulation.simulated_exchange import (
                         ORDER_META_SIM_FILL_PRICE_FINAL,
@@ -86,18 +94,34 @@ class TradingEngine:
                     prev_closed = len(portfolio.closed_trade_results)
                     portfolio.apply_execution(exit_trade)
                     
-                    # 2. Register risk outcome (Phase 2)
                     for res in portfolio.closed_trade_results[prev_closed:]:
                         res["reason"] = reason
                         is_sl = (reason == "SL")
                         if hasattr(risk, "register_trade_result"):
                             risk.register_trade_result(res["symbol"], res["pnl_abs"], exit_trade.ts, stop_loss_hit=is_sl)
-                    
-                    if self._execution_listener is not None:
-                        maybe_coro = self._execution_listener(exit_trade, portfolio)
-                        import inspect
-                        if inspect.isawaitable(maybe_coro):
-                            await maybe_coro
+                    if portfolio.trade_events and portfolio.trade_events[-1].get("type") == "CLOSE":
+                        portfolio.trade_events[-1]["reason"] = reason
+                        if reason_suffix:
+                            portfolio.trade_events[-1]["reason_suffix"] = reason_suffix
+                    await self._notify_execution(exit_trade, portfolio)
+                    return True
+        return False
+
+    async def _handle_tick(self, tick) -> None:
+        risk = self._deps["risk"]
+        exchange = self._deps["exchange"]
+        portfolio = self._deps["portfolio"]
+        execution = self._deps["execution"]
+
+        if hasattr(exchange, "set_last_price"):
+            exchange.set_last_price(float(tick.price))
+
+        if hasattr(risk, "set_current_bar"):
+            risk.set_current_bar(getattr(tick, "ts", None))
+
+        await self._process_exit_for_tick(tick)
+        if portfolio.get_position(tick.symbol) is not None:
+            return
 
         df = await self._deps["data"].warmup(tick.symbol, self._deps["model"].required_bars())
         prediction = self._deps["model"].predict(df)
@@ -107,6 +131,17 @@ class TradingEngine:
         raw_order = self._deps["strategy"].on_prediction(tick, prediction, self._deps["portfolio"])
         if raw_order is None:
             return
+        raw_order.meta = raw_order.meta or {}
+        p_long = float(prediction.get("p_long", 0.5))
+        p_short = float(prediction.get("p_short", 0.5))
+        raw_order.meta.update(
+            {
+                "p_long": p_long,
+                "p_short": p_short,
+                "signal_gap": abs(p_long - p_short),
+                "direction_prob": max(p_long, p_short),
+            }
+        )
         safe_order = risk.check(raw_order, portfolio, exchange)
         if safe_order is None:
             return
@@ -119,11 +154,46 @@ class TradingEngine:
             trade.meta.update(safe_order.meta)
             
         portfolio.apply_execution(trade)
-        if self._execution_listener is not None:
-            maybe_coro = self._execution_listener(trade, portfolio)
-            import inspect
-            if inspect.isawaitable(maybe_coro):
-                await maybe_coro
+        await self._notify_execution(trade, portfolio)
+        await self._process_exit_for_tick(tick, reason_suffix="INTRA-BAR")
+
+    async def on_market_event(self, tick) -> None:
+        await self._handle_tick(tick)
+
+    async def close_all_at_market(self, market_prices: dict[str, float], ts) -> None:
+        from core.types.domain_types import Order
+        from core.types.enums import OrderSide
+
+        portfolio = self._deps["portfolio"]
+        exchange = self._deps["exchange"]
+        execution = self._deps["execution"]
+        from infrastructure.exchanges.simulation.simulated_exchange import (
+            ORDER_META_SIM_FILL_PRICE_FINAL,
+        )
+
+        for pos in list(portfolio.get_open_positions()):
+            ref_price = float(market_prices.get(pos.symbol, pos.entry_price))
+            side = OrderSide.SELL if pos.side.value == "long" else OrderSide.BUY
+            if hasattr(exchange, "market_fill_price"):
+                exit_price = exchange.market_fill_price(ref_price, side)
+            else:
+                exit_price = ref_price
+            order = Order(
+                symbol=pos.symbol,
+                side=side,
+                amount=pos.amount,
+                price=exit_price,
+                meta={ORDER_META_SIM_FILL_PRICE_FINAL: True, "reason": "FINAL"},
+            )
+            trade = await execution.execute(order, exchange)
+            trade.ts = ts
+            prev_closed = len(portfolio.closed_trade_results)
+            portfolio.apply_execution(trade)
+            for res in portfolio.closed_trade_results[prev_closed:]:
+                res["reason"] = "FINAL"
+            if portfolio.trade_events and portfolio.trade_events[-1].get("type") == "CLOSE":
+                portfolio.trade_events[-1]["reason"] = "FINAL"
+            await self._notify_execution(trade, portfolio)
 
     def _track_task(self, coro) -> None:
         task = asyncio.create_task(coro)

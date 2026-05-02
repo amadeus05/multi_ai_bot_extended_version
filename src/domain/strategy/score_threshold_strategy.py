@@ -8,7 +8,7 @@ from domain.strategy.strategy_engine import Strategy
 
 
 class BacktestParitySignalStrategy(Strategy):
-    """Сигнал 1:1 как в BacktestEngine: порог вероятности + минимальный gap между классами."""
+    """Сигнал для backtest/paper/live: порог вероятности + минимальный gap между классами."""
 
     def __init__(
         self,
