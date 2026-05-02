@@ -20,7 +20,11 @@ async def main() -> None:
         allow_longs=cfg.allow_longs,
         allow_shorts=cfg.allow_shorts,
     )
-    exchange = SimulatedExchange()
+    exchange = SimulatedExchange(
+        commission=float(cfg.taker_com),
+        slippage=float(cfg.slippage),
+        leverage=float(cfg.leverage),
+    )
     orchestrator = build_realtime_orchestrator(
         cfg=cfg,
         exchange=exchange,
