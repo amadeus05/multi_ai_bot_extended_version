@@ -58,4 +58,7 @@ Desktop.ini
 
 
 .temp_code/
-.backtest_charts/
+/backtest_charts/*.*
+/models/walk_forward_oos_predictions_summary.json
+/models/walk_forward_oos_predictions.csv
+
