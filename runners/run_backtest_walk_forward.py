@@ -18,17 +18,10 @@ from application.backtest_trade_export import export_closed_trades_csv
 from application.inference.walk_forward_model import WalkForwardPredictionModel
 from application.training.data_loader import load_training_frame
 from application.training.walk_forward_pipeline import WalkForwardPipeline
-from application.trading_engine import TradingEngine
-from core.config.backtest_config import BacktestConfig
+from application.trading_runtime_factory import build_trading_engine
+from core.config.loader import load_backtest_settings
 from core.config.train_config import TrainConfig
-from domain.execution.execution_service import ExecutionService
-from domain.execution.exit_manager import ExitManager
-from domain.ml.labeling.barrier_policy import BarrierPolicy
-from domain.ml.labeling.models import LabelingConfig
 from domain.portfolio.portfolio_manager import PortfolioManager
-from domain.risk.adaptive_risk_manager import AdaptiveRiskManager
-from domain.risk.models.risk_profile import RiskProfile
-from domain.strategy import BacktestParitySignalStrategy
 from infrastructure.data_providers.historical_replay_provider import HistoricalReplayProvider
 from infrastructure.exchanges.simulation.simulated_exchange import SimulatedExchange
 
@@ -50,9 +43,14 @@ def _filter_backtest_frame(frame: pd.DataFrame, *, start: str, end: str) -> pd.D
     return out.sort_values("timestamp").reset_index(drop=True)
 
 
-def _load_symbol_frame(cfg: BacktestConfig, symbol: str) -> pd.DataFrame:
+def _load_symbol_frame(settings, symbol: str) -> pd.DataFrame:
     symbol_key = symbol.replace("/", "")
-    dataset_path = Path(cfg.dataset_dir) / f"symbol={symbol_key}" / f"timeframe={cfg.timeframe}" / "dataset.parquet"
+    dataset_path = (
+        Path(settings.dataset_dir)
+        / f"symbol={symbol_key}"
+        / f"timeframe={settings.trading.timeframe}"
+        / "dataset.parquet"
+    )
     if not dataset_path.exists():
         raise FileNotFoundError(
             f"Dataset for {symbol} not found: {dataset_path}. "
@@ -63,28 +61,30 @@ def _load_symbol_frame(cfg: BacktestConfig, symbol: str) -> pd.DataFrame:
         frame["symbol"] = symbol
     else:
         frame["symbol"] = frame["symbol"].fillna(symbol).astype(str)
-    frame = _filter_backtest_frame(frame, start=cfg.backtest_start, end=cfg.backtest_end)
+    frame = _filter_backtest_frame(frame, start=settings.start, end=settings.end)
     if frame.empty:
         raise ValueError(f"No rows remain for {symbol} after BACKTEST_START/END filtering.")
     return frame
 
 
 async def main() -> None:
-    backtest_cfg = BacktestConfig.from_env()
+    backtest_settings = load_backtest_settings()
     train_cfg = TrainConfig.from_env()
-    if len(backtest_cfg.symbols) != 1:
+    trading = backtest_settings.trading
+    symbols = list(trading.symbols)
+    if len(symbols) != 1:
         raise ValueError(
             "TradingEngine walk-forward backtest currently supports exactly one symbol. "
             "Set SYMBOLS to one instrument, for example SYMBOLS=BTC/USDT."
         )
-    if backtest_cfg.backtest_strict_oos and not backtest_cfg.backtest_start:
+    if backtest_settings.strict_oos and not backtest_settings.start:
         raise ValueError("BACKTEST_STRICT_OOS=1 requires BACKTEST_START.")
 
-    symbol = backtest_cfg.symbols[0]
-    dataset = load_training_frame(backtest_cfg.dataset_dir, backtest_cfg.symbols, backtest_cfg.timeframe)
+    symbol = symbols[0]
+    dataset = load_training_frame(backtest_settings.dataset_dir, symbols, trading.timeframe)
     if dataset.empty:
         raise RuntimeError("Empty dataset for walk-forward backtest. Run dataset pipeline first.")
-    dataset = _filter_backtest_frame(dataset, start=backtest_cfg.backtest_start, end=backtest_cfg.backtest_end)
+    dataset = _filter_backtest_frame(dataset, start=backtest_settings.start, end=backtest_settings.end)
     if dataset.empty:
         raise RuntimeError("Dataset is empty after BACKTEST_START/END filtering.")
 
@@ -97,9 +97,12 @@ async def main() -> None:
     }
     wf_model = WalkForwardPredictionModel(lookup=lookup, feature_columns=wf_result.feature_columns)
 
-    frame = _load_symbol_frame(backtest_cfg, symbol)
-    strict_predictions = os.getenv("WF_REPLAY_STRICT_PREDICTIONS", "0").strip().lower() in ("1", "true", "yes")
-    start_bar_idx = max(0, int(backtest_cfg.backtest_skip_initial_bars))
+    frame = _load_symbol_frame(backtest_settings, symbol)
+    strict_predictions = (
+        backtest_settings.strict_oos
+        or os.getenv("WF_REPLAY_STRICT_PREDICTIONS", "0").strip().lower() in ("1", "true", "yes")
+    )
+    start_bar_idx = max(0, int(backtest_settings.skip_initial_bars))
     if strict_predictions:
         symbol_predictions = wf_result.predictions.loc[wf_result.predictions["symbol"].astype(str) == symbol]
         if symbol_predictions.empty:
@@ -111,43 +114,31 @@ async def main() -> None:
         start_bar_idx = max(start_bar_idx, int(first_pred_matches[0]))
 
     exchange = SimulatedExchange(
-        commission=float(backtest_cfg.taker_com),
-        slippage=float(backtest_cfg.slippage),
-        leverage=float(backtest_cfg.leverage),
+        commission=float(trading.costs.taker_com),
+        slippage=float(trading.costs.slippage),
+        leverage=float(trading.leverage),
     )
-    labeling_cfg = LabelingConfig.from_env()
-    barrier_policy = BarrierPolicy(labeling_cfg)
-    portfolio = PortfolioManager(cash={"USDT": float(backtest_cfg.initial_capital)})
+    portfolio = PortfolioManager(cash={"USDT": float(trading.initial_capital)})
     data_provider = HistoricalReplayProvider(symbol, frame, skip_initial_bars=start_bar_idx)
-    strategy = BacktestParitySignalStrategy(
-        directional_proba_threshold=float(backtest_cfg.directional_proba_threshold),
-        min_signal_gap=float(backtest_cfg.min_signal_gap),
-        allow_longs=backtest_cfg.allow_longs,
-        allow_shorts=backtest_cfg.allow_shorts,
+    reporter = BacktestReplayReporter(
+        config=backtest_settings,
+        portfolio=portfolio,
+        charts_dir=backtest_settings.charts_dir,
     )
-    engine = TradingEngine(
+    engine = build_trading_engine(
+        settings=trading,
         exchange=exchange,
         data_provider=data_provider,
         model=wf_model,
-        strategy=strategy,
-        risk_manager=AdaptiveRiskManager(profile=RiskProfile.from_env()),
         portfolio=portfolio,
-        execution=ExecutionService(),
-        exit_manager=ExitManager(slippage=barrier_policy.slippage),
-        barrier_policy=barrier_policy,
+        execution_listener=reporter.on_execution,
     )
-    reporter = BacktestReplayReporter(
-        config=backtest_cfg,
-        portfolio=portfolio,
-        charts_dir=backtest_cfg.backtest_charts_dir,
-    )
-    engine.set_execution_listener(reporter.on_execution)
 
     print(
         f"TradingEngine Walk-forward OOS backtest | {symbol} | rows={len(frame)} | "
         f"predictions={len(wf_result.predictions)} | folds={len(wf_result.fold_details)} | "
         f"first_bar_index={start_bar_idx} | strict_predictions={int(strict_predictions)} | "
-        f"capital={backtest_cfg.initial_capital}"
+        f"capital={trading.initial_capital}"
     )
     print("-" * 80)
 
@@ -170,7 +161,7 @@ async def main() -> None:
     report = reporter.finish()
     export_closed_trades_csv(
         report,
-        Path(backtest_cfg.backtest_charts_dir) / "wf_trading_engine_closed_trades.csv",
+        Path(backtest_settings.charts_dir) / "wf_trading_engine_closed_trades.csv",
         source="trading_engine",
     )
 

@@ -3,12 +3,10 @@ import numpy as np
 from core.interfaces.exchange import Exchange
 from core.types.domain_types import Order, Position
 from core.types.enums import OrderSide, OrderStatus
+from core.types.order_flags import ORDER_META_FILL_PRICE_FINAL
 
 # Order.meta: цена закрытия уже включает модельный slippage (например ExitManager / resolve_trade_exit);
 # get_order_status не сдвигает avg_price второй раз — иначе paper diverges от бэктеста.
-ORDER_META_SIM_FILL_PRICE_FINAL = "sim_fill_price_final"
-
-
 class SimulatedExchange(Exchange):
     """
     Исполнение маркет-ордеров: референсная цена ± slippage, комиссия taker на ногу.
@@ -87,7 +85,7 @@ class SimulatedExchange(Exchange):
         if not np.isfinite(ref_px) or ref_px <= 0: ref_px = 1.0
 
         meta = getattr(order, "meta", None) or {}
-        if meta.get(ORDER_META_SIM_FILL_PRICE_FINAL):
+        if meta.get(ORDER_META_FILL_PRICE_FINAL):
             avg_px = ref_px
         else:
             avg_px = self.market_fill_price(ref_px, order.side)

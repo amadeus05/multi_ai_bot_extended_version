@@ -4,6 +4,7 @@ import inspect
 from core.interfaces.data_provider import DataProvider
 from core.interfaces.exchange import Exchange
 from core.interfaces.model import Model
+from core.types.order_flags import ORDER_META_FILL_PRICE_FINAL
 from domain.execution.execution_service import ExecutionService
 from domain.portfolio.portfolio_manager import PortfolioManager
 from domain.risk.risk_manager import RiskManager
@@ -78,15 +79,12 @@ class TradingEngine:
                     from core.types.enums import OrderSide
                     exit_side = OrderSide.SELL if pos.side.value == "long" else OrderSide.BUY
                     from core.types.domain_types import Order
-                    from infrastructure.exchanges.simulation.simulated_exchange import (
-                        ORDER_META_SIM_FILL_PRICE_FINAL,
-                    )
                     exit_order = Order(
                         symbol=pos.symbol,
                         side=exit_side,
                         amount=pos.amount,
                         price=exit_price,
-                        meta={ORDER_META_SIM_FILL_PRICE_FINAL: True},
+                        meta={ORDER_META_FILL_PRICE_FINAL: True},
                     )
                     exit_trade = await execution.execute(exit_order, exchange)
                     exit_trade.ts = getattr(tick, "ts", exit_trade.ts)
@@ -167,9 +165,6 @@ class TradingEngine:
         portfolio = self._deps["portfolio"]
         exchange = self._deps["exchange"]
         execution = self._deps["execution"]
-        from infrastructure.exchanges.simulation.simulated_exchange import (
-            ORDER_META_SIM_FILL_PRICE_FINAL,
-        )
 
         for pos in list(portfolio.get_open_positions()):
             ref_price = float(market_prices.get(pos.symbol, pos.entry_price))
@@ -183,7 +178,7 @@ class TradingEngine:
                 side=side,
                 amount=pos.amount,
                 price=exit_price,
-                meta={ORDER_META_SIM_FILL_PRICE_FINAL: True, "reason": "FINAL"},
+                meta={ORDER_META_FILL_PRICE_FINAL: True, "reason": "FINAL"},
             )
             trade = await execution.execute(order, exchange)
             trade.ts = ts

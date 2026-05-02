@@ -1,47 +1,34 @@
 from __future__ import annotations
 
 from application.realtime_orchestrator import RealtimeOrchestrator
-from application.trading_engine import TradingEngine
+from application.trading_runtime_factory import build_trading_engine
 from core.interfaces.exchange import Exchange
 from core.interfaces.model import Model
-from domain.execution.execution_service import ExecutionService
-from domain.portfolio.portfolio_manager import PortfolioManager
-from domain.ml.labeling.barrier_policy import BarrierPolicy
-from domain.ml.labeling.models import LabelingConfig
-from domain.risk.adaptive_risk_manager import AdaptiveRiskManager
-from domain.risk.models.risk_profile import RiskProfile
-from domain.strategy.strategy_engine import Strategy
-from domain.execution.exit_manager import ExitManager
 from infrastructure.data_providers.websocket_provider import WebSocketProvider
 
 
 def build_realtime_orchestrator(
-    cfg,
+    settings,
     exchange: Exchange,
-    initial_capital: float,
     *,
     model: Model,
-    strategy: Strategy,
 ) -> RealtimeOrchestrator:
-    data_provider = WebSocketProvider(cfg.ws_url, timeframe=cfg.timeframe, htf_timeframe=cfg.htf_timeframe)
-    risk_manager = AdaptiveRiskManager(profile=RiskProfile.from_env())
-    labeling_cfg = LabelingConfig.from_env()
-    barrier_policy = BarrierPolicy(labeling_cfg)
-    engine = TradingEngine(
+    trading = settings.trading
+    data_provider = WebSocketProvider(
+        settings.ws_url,
+        timeframe=trading.timeframe,
+        htf_timeframe=trading.htf_timeframe,
+    )
+    engine = build_trading_engine(
+        settings=trading,
         exchange=exchange,
         data_provider=data_provider,
         model=model,
-        strategy=strategy,
-        risk_manager=risk_manager,
-        portfolio=PortfolioManager(cash={"USDT": initial_capital}),
-        execution=ExecutionService(),
-        exit_manager=ExitManager(slippage=barrier_policy.slippage),
-        barrier_policy=barrier_policy,
     )
     return RealtimeOrchestrator(
         engine=engine,
         data_provider=data_provider,
         model=model,
-        symbols=cfg.symbols,
+        symbols=list(trading.symbols),
         warmup_bars=max(200, model.required_bars()),
     )

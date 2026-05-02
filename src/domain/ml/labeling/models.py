@@ -52,8 +52,8 @@ class LabelingConfig:
                 tp_to_sl_ratio=float(os.getenv("BARRIER_TP_TO_SL_RATIO", "2.0")),
                 min_pct=float(os.getenv("BARRIER_MIN_PCT", "0.0075")),
                 max_pct=float(os.getenv("BARRIER_MAX_PCT", "0.06")),
-                taker_com=float(os.getenv("TAKER_COM", "0.0004")),
-                slippage=float(os.getenv("SLIPPAGE", "0.0003")),
+                taker_com=float(os.getenv("EXEC_TAKER_COM", os.getenv("TAKER_COM", "0.0004"))),
+                slippage=float(os.getenv("EXEC_SLIPPAGE", os.getenv("SLIPPAGE", "0.0003"))),
             ),
             realized_vol_column=os.getenv("REALIZED_VOL_COLUMN", "realized_vol_1h"),
         )
