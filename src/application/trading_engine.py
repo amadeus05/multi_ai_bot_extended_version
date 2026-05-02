@@ -70,7 +70,16 @@ class TradingEngine:
                     from core.types.enums import OrderSide
                     exit_side = OrderSide.SELL if pos.side.value == "LONG" else OrderSide.BUY
                     from core.types.domain_types import Order
-                    exit_order = Order(symbol=pos.symbol, side=exit_side, amount=pos.amount, price=exit_price)
+                    from infrastructure.exchanges.simulation.simulated_exchange import (
+                        ORDER_META_SIM_FILL_PRICE_FINAL,
+                    )
+                    exit_order = Order(
+                        symbol=pos.symbol,
+                        side=exit_side,
+                        amount=pos.amount,
+                        price=exit_price,
+                        meta={ORDER_META_SIM_FILL_PRICE_FINAL: True},
+                    )
                     exit_trade = await execution.execute(exit_order, exchange)
                     exit_trade.ts = getattr(tick, "ts", exit_trade.ts)
                     
