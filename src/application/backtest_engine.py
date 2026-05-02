@@ -23,7 +23,7 @@ import pandas as pd
 
 from domain.strategy.signal_resolver import resolve_directional_signal
 from domain.risk.sizing import (
-    cap_notional_to_available_margin,
+    barrier_nominal_under_margin_cap,
     compute_barrier_position_notional,
 )
 from core.types.enums import OrderSide
@@ -364,13 +364,13 @@ class BacktestEngine:
 
                 entry_side = OrderSide.BUY if signal == 1 else OrderSide.SELL
                 entry_price = self._sim.market_fill_price(float(ctx["next_open"]), entry_side)
-                position_notional, required_margin = compute_barrier_position_notional(
+                pre_nom, _pre_m = compute_barrier_position_notional(
                     snapshot_balance,
                     effective_risk,
                     float(stop_pct),
                     float(self.config.leverage),
                 )
-                if position_notional < float(self.config.min_position_notional):
+                if pre_nom < float(self.config.min_position_notional):
                     continue
                 score = self._build_entry_score(direction_prob, signal_gap)
                 candidates.append(
@@ -378,8 +378,6 @@ class BacktestEngine:
                         "symbol": symbol,
                         "signal": signal,
                         "entry_price": float(entry_price),
-                        "position_notional": float(position_notional),
-                        "required_margin": float(required_margin),
                         "stop_pct": float(stop_pct),
                         "take_pct": float(take_pct),
                         "p_long": p_long,
@@ -404,10 +402,11 @@ class BacktestEngine:
                 if available_balance <= 0:
                     break
 
-                position_notional, required_margin = cap_notional_to_available_margin(
-                    candidate["position_notional"],
-                    candidate["required_margin"],
+                position_notional, required_margin = barrier_nominal_under_margin_cap(
+                    snapshot_balance,
                     available_balance,
+                    effective_risk,
+                    float(candidate["stop_pct"]),
                     float(self.config.leverage),
                 )
                 if (

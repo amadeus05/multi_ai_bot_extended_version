@@ -1,10 +1,7 @@
 from core.types.enums import OrderSide, PositionSide
 from domain.risk.models.risk_context import RiskContext
 from domain.risk.rules.base_rule import RiskRule
-from domain.risk.sizing import (
-    cap_notional_to_available_margin,
-    compute_barrier_position_notional,
-)
+from domain.risk.sizing import barrier_nominal_under_margin_cap, estimated_margin_reserved_perps_linear
 
 
 class PositionSizingRule(RiskRule):
@@ -33,9 +30,13 @@ class PositionSizingRule(RiskRule):
         if sp is None or sp <= 0 or not (sp == sp):
             return False
 
-        balance_for_risk = float(ctx.portfolio.cash.get(ctx.quote_asset, 0.0))
-        if balance_for_risk <= 0:
+        total_cash = float(ctx.portfolio.cash.get(ctx.quote_asset, 0.0))
+        if total_cash <= 0:
             return False
+
+        opens = getattr(ctx.portfolio, "get_open_positions", lambda: [])()
+        reserved = estimated_margin_reserved_perps_linear(opens, ctx.profile.leverage)
+        available_margin = max(0.0, total_cash - reserved)
 
         effective_risk = ctx.profile.risk_per_trade
         if (
@@ -44,16 +45,11 @@ class PositionSizingRule(RiskRule):
         ):
             effective_risk = ctx.profile.reduced_risk_per_trade
 
-        position_notional, required_margin = compute_barrier_position_notional(
-            balance_for_risk,
+        position_notional, required_margin = barrier_nominal_under_margin_cap(
+            total_cash,
+            available_margin,
             effective_risk,
             sp,
-            ctx.profile.leverage,
-        )
-        position_notional, required_margin = cap_notional_to_available_margin(
-            position_notional,
-            required_margin,
-            balance_for_risk,
             ctx.profile.leverage,
         )
         if position_notional < float(ctx.profile.min_position_notional):

@@ -1,5 +1,9 @@
 """
-Сайзинг под triple-barrier: риск на сделку, stop_pct, плечо (эталон — BacktestEngine).
+Сайзинг под triple-barrier: риск на сделку, stop_pct, плечо — общее ядро с BacktestEngine.
+
+- compute_barrier_position_notional / cap_notional_to_available_margin — низкоуровневые шаги;
+- barrier_nominal_under_margin_cap — оба шага подряд (как второй проход открытия в бэктесте и live Risk);
+- estimated_margin_reserved_perps_linear — оценка занятой маржи под открытые позиции (live/paper).
 """
 from __future__ import annotations
 
@@ -37,3 +41,42 @@ def cap_notional_to_available_margin(
     req = min(float(required_margin), float(max(0.0, available_margin)))
     notional = min(float(position_notional), req * lev)
     return float(notional), float(req)
+
+
+def estimated_margin_reserved_perps_linear(
+    open_positions: object,
+    leverage: float,
+) -> float:
+    """
+    Грубая зарезервированная маржа под открытые позиции (USDT‑margin linear),
+    в духе бэктеста: сумма (qty * entry_price / leverage).
+    Duck-typing: у позиции есть amount и entry_price.
+    """
+    lev = max(1e-9, float(leverage))
+    total = 0.0
+    for pos in open_positions:
+        amt = getattr(pos, "amount", None)
+        px = getattr(pos, "entry_price", None)
+        if amt is None or px is None:
+            continue
+        total += abs(float(amt)) * abs(float(px)) / lev
+    return float(total)
+
+
+def barrier_nominal_under_margin_cap(
+    total_cash_snapshot: float,
+    available_margin: float,
+    effective_risk: float,
+    stop_pct: float,
+    leverage: float,
+) -> tuple[float, float]:
+    """
+    Два шага как в BacktestEngine (и как в PositionSizingRule):
+    номинал от полного snapshot, затем ограничение по свободной марже.
+    """
+    n, m = compute_barrier_position_notional(
+        total_cash_snapshot, effective_risk, stop_pct, leverage
+    )
+    return cap_notional_to_available_margin(
+        n, m, available_margin, leverage
+    )
