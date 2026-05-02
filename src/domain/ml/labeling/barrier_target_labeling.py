@@ -130,9 +130,10 @@ def resolve_trade_exit(
     next_low: float,
     stop_pct: float,
     take_pct: float,
-    cfg: LabelingConfig,
+    *,
+    slippage: float,
 ) -> tuple[float | None, str | None]:
-    slippage = float(cfg.barrier.slippage)
+    slippage = float(slippage)
     if direction == 1:
         stop_price = entry_price * (1 - stop_pct)
         take_price = entry_price * (1 + take_pct)
@@ -186,7 +187,7 @@ def simulate_trade_outcome(
             lows[candle_idx],
             stop_pct,
             take_pct,
-            cfg,
+            slippage=slippage,
         )
         if exit_price is not None:
             return compute_clean_pnl(direction, entry_price, exit_price, cfg), reason
