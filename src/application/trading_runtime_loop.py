@@ -21,6 +21,12 @@ class TradingRuntimeLoop:
     async def stop(self) -> None:
         await self._queue.put(None)
 
+    async def drain(self) -> None:
+        await self._queue.join()
+
+    def start(self) -> asyncio.Task[None]:
+        return asyncio.create_task(self.run_forever())
+
     async def process_once(self, event: TradingEvent) -> list[TradingEvent]:
         commands: list[TradingCommand] = await self._engine.process_event(event)
         return await self._engine.execute_commands(commands)
@@ -29,7 +35,10 @@ class TradingRuntimeLoop:
         self._running = True
         while self._running:
             event = await self._queue.get()
-            if event is None:
-                self._running = False
-                continue
-            await self.process_once(event)
+            try:
+                if event is None:
+                    self._running = False
+                    continue
+                await self.process_once(event)
+            finally:
+                self._queue.task_done()

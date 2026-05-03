@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+import asyncio
 import logging
+from contextlib import suppress
 
 from application.trading_engine import TradingEngine
+from application.trading_runtime_loop import TradingRuntimeLoop
 from core.interfaces.data_provider import DataProvider
 from core.interfaces.model import Model
+from core.types.domain_types import Tick
+from core.types.events import MarketEvent
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +28,9 @@ class RealtimeOrchestrator:
         model: Model,
         symbols: list[str],
         warmup_bars: int | None = None,
+        runtime: TradingRuntimeLoop | None = None,
     ) -> None:
-        self._engine = engine
+        self._runtime = runtime or TradingRuntimeLoop(engine)
         self._data_provider = data_provider
         self._model = model
         self._symbols = symbols
@@ -40,6 +46,32 @@ class RealtimeOrchestrator:
                 logger.info("[%s] warmup loaded rows=%s", symbol, len(frame))
         logger.info("Realtime bootstrap finished")
 
+    async def _publish_tick(self, tick: Tick) -> None:
+        await self._runtime.publish(MarketEvent(tick))
+
     async def run(self) -> None:
         await self.bootstrap()
-        await self._engine.run(self._symbols)
+        for symbol in self._symbols:
+            self._data_provider.subscribe(symbol, self._publish_tick)
+
+        runtime_task = self._runtime.start()
+        provider_task = asyncio.create_task(self._data_provider.run())
+        try:
+            done, pending = await asyncio.wait(
+                {runtime_task, provider_task},
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+            if provider_task in done:
+                provider_task.result()
+                await self._runtime.drain()
+            else:
+                runtime_task.result()
+        finally:
+            await self._runtime.stop()
+            if not provider_task.done():
+                provider_task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await provider_task
+            if not runtime_task.done():
+                with suppress(asyncio.CancelledError):
+                    await runtime_task
