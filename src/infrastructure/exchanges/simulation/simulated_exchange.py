@@ -1,8 +1,11 @@
 import numpy as np
 
 from core.interfaces.exchange import Exchange
+from core.types.commands import CancelOrderCommand, PlaceOrderCommand
 from core.types.domain_types import Order, Position
 from core.types.enums import OrderSide, OrderStatus
+from core.types.events import TradingEvent
+from core.types.execution_event_factory import ExecutionEventFactory
 from core.types.order_flags import ORDER_META_FILL_PRICE_FINAL
 
 # Order.meta: цена закрытия уже включает модельный slippage (например ExitManager / resolve_trade_exit);
@@ -104,6 +107,49 @@ class SimulatedExchange(Exchange):
             "liquidation_price": liq,
             "leverage": self._leverage,
         }
+
+    async def submit_order_lifecycle(self, command: PlaceOrderCommand) -> list[TradingEvent]:
+        order = command.order
+        order_id = await self.place_order(order)
+        order.id = order_id
+        status = await self.get_order_status(order_id)
+        event_ts = ExecutionEventFactory.event_ts(command.ts, status)
+        status_value = status.get("status")
+
+        if ExecutionEventFactory.is_status(status_value, OrderStatus.REJECTED):
+            return [ExecutionEventFactory.rejected(event_ts, order, str(status.get("reason", "rejected")))]
+
+        if ExecutionEventFactory.is_status(status_value, OrderStatus.CANCELLED):
+            return [
+                ExecutionEventFactory.cancelled(
+                    event_ts,
+                    order_id=order_id,
+                    client_order_id=order.client_order_id,
+                    reason=str(status.get("reason", "cancelled")),
+                )
+            ]
+
+        events: list[TradingEvent] = [
+            ExecutionEventFactory.accepted(event_ts, order_id, order)
+        ]
+        if not ExecutionEventFactory.is_status(status_value, OrderStatus.FILLED):
+            return events
+
+        events.append(ExecutionEventFactory.fill_from_status(command, order_id, status, event_ts))
+        return events
+
+    async def cancel_order_lifecycle(self, command: CancelOrderCommand) -> list[TradingEvent]:
+        event_ts = ExecutionEventFactory.event_ts(command.ts)
+        cancelled = await self.cancel_order(command.order_id)
+        if cancelled is False:
+            return [ExecutionEventFactory.cancel_rejected(command, event_ts)]
+        return [
+            ExecutionEventFactory.cancelled(
+                event_ts,
+                command.order_id,
+                reason=command.reason,
+            )
+        ]
 
     def _calculate_liquidation_price(self, side: OrderSide, entry_price: float) -> float:
         mmr = 0.005

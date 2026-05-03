@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from core.types.commands import CancelOrderCommand, PlaceOrderCommand
 from core.interfaces.exchange import Exchange
 from core.types.domain_types import Order, Position
+from core.types.events import TradingEvent
 from infrastructure.exchanges.bybit.bybit_adapter import BybitAdapter
 from infrastructure.exchanges.bybit.bybit_mapper import BybitMapper
 
@@ -39,8 +41,14 @@ class BybitExecutionExchange(Exchange):
     async def place_order(self, order: Order) -> str:
         raise self._not_implemented("place_order")
 
+    async def submit_order_lifecycle(self, command: PlaceOrderCommand) -> list[TradingEvent]:
+        raise self._not_implemented("submit_order_lifecycle")
+
     async def cancel_order(self, order_id: str) -> None:
         raise self._not_implemented("cancel_order")
+
+    async def cancel_order_lifecycle(self, command: CancelOrderCommand) -> list[TradingEvent]:
+        raise self._not_implemented("cancel_order_lifecycle")
 
     async def get_balance(self, asset: str) -> float:
         raise self._not_implemented("get_balance")

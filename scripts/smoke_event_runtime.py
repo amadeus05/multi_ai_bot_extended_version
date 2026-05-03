@@ -12,9 +12,10 @@ from application.trading_engine import TradingEngine
 from application.trading_runtime_loop import TradingRuntimeLoop
 from core.interfaces.data_provider import DataProvider
 from core.interfaces.model import Model
+from core.types.commands import CancelOrderCommand, PlaceOrderCommand
 from core.types.domain_types import Order, Tick
 from core.types.enums import OrderSide
-from core.types.events import MarketEvent
+from core.types.events import FillEvent, MarketEvent, OrderAcceptedEvent, OrderCancelledEvent
 from domain.execution.execution_service import ExecutionService
 from domain.execution.exit_manager import ExitManager
 from domain.portfolio.portfolio_manager import PortfolioManager
@@ -80,9 +81,31 @@ class NoBarrierPolicy:
 
 
 async def main() -> None:
+    await smoke_simulated_exchange_lifecycle()
     await smoke_entry_and_intrabar_exit()
     await smoke_exit_then_reenter_same_tick()
     print("event runtime smoke ok")
+
+
+async def smoke_simulated_exchange_lifecycle() -> None:
+    exchange = SimulatedExchange(commission=0.0, slippage=0.0, leverage=1.0)
+    execution = ExecutionService()
+    order = Order(symbol="BTC/USDT", side=OrderSide.BUY, amount=1.0, price=100.0)
+    events = await execution.execute(
+        PlaceOrderCommand(order, reason="ENTRY", ts=pd.Timestamp("2024-01-02 00:00:00")),
+        exchange,
+    )
+
+    assert [type(event) for event in events] == [OrderAcceptedEvent, FillEvent], events
+    assert events[0].order_id == events[1].order_id
+    assert order.id == events[0].order_id
+
+    cancel_events = await execution.execute(
+        CancelOrderCommand(order_id=events[0].order_id, reason="TEST", ts=pd.Timestamp("2024-01-02 00:01:00")),
+        exchange,
+    )
+    assert [type(event) for event in cancel_events] == [OrderCancelledEvent], cancel_events
+    assert cancel_events[0].order_id == events[0].order_id
 
 
 async def smoke_entry_and_intrabar_exit() -> None:

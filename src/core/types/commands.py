@@ -19,6 +19,7 @@ class PlaceOrderCommand:
 class CancelOrderCommand:
     order_id: str
     reason: str | None = None
+    ts: pd.Timestamp | None = None
 
 
 TradingCommand = Union[PlaceOrderCommand, CancelOrderCommand]

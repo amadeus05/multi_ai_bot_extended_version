@@ -1,65 +1,73 @@
 import uuid
 
-import pandas as pd
-
 from core.interfaces.exchange import Exchange
-from core.types.commands import PlaceOrderCommand
-from core.types.domain_types import Order, Trade
+from core.interfaces.execution_lifecycle import ExecutionLifecycleExchange
+from core.types.commands import CancelOrderCommand, PlaceOrderCommand, TradingCommand
+from core.types.domain_types import Order
 from core.types.enums import OrderStatus
-from core.types.events import FillEvent, OrderAcceptedEvent, OrderRejectedEvent, TradingEvent
+from core.types.events import TradingEvent
+from core.types.execution_event_factory import ExecutionEventFactory
 
 
 class ExecutionService:
-    async def execute(self, command: PlaceOrderCommand | Order, exchange: Exchange) -> list[TradingEvent]:
-        order = command.order if isinstance(command, PlaceOrderCommand) else command
-        command_ts = command.ts if isinstance(command, PlaceOrderCommand) else None
+    async def execute(self, command: TradingCommand | Order, exchange: Exchange) -> list[TradingEvent]:
+        if isinstance(command, Order):
+            command = PlaceOrderCommand(command)
+        if isinstance(command, PlaceOrderCommand):
+            self._ensure_client_order_id(command.order)
+            if isinstance(exchange, ExecutionLifecycleExchange):
+                return await exchange.submit_order_lifecycle(command)
+            return await self._place_order_legacy(command, exchange)
+        if isinstance(command, CancelOrderCommand):
+            if isinstance(exchange, ExecutionLifecycleExchange):
+                return await exchange.cancel_order_lifecycle(command)
+            return await self._cancel_order_legacy(command, exchange)
+        return []
+
+    @staticmethod
+    def _ensure_client_order_id(order: Order) -> None:
         if order.client_order_id is None:
             order.client_order_id = str(uuid.uuid4())
+
+    async def _place_order_legacy(self, command: PlaceOrderCommand, exchange: Exchange) -> list[TradingEvent]:
+        order = command.order
         order_id = await exchange.place_order(order)
         order.id = order_id
         status = await exchange.get_order_status(order_id)
 
         status_value = status.get("status")
-        event_ts = command_ts or status.get("ts") or status.get("timestamp") or pd.Timestamp.utcnow()
-        events: list[TradingEvent] = [
-            OrderAcceptedEvent(
-                ts=event_ts,
-                order_id=order_id,
-                client_order_id=order.client_order_id,
-                order=order,
-            )
-        ]
-
-        if status_value == OrderStatus.REJECTED or str(status_value).lower().endswith("rejected"):
+        event_ts = ExecutionEventFactory.event_ts(command.ts, status)
+        if ExecutionEventFactory.is_status(status_value, OrderStatus.REJECTED):
+            return [ExecutionEventFactory.rejected(event_ts, order, str(status.get("reason", "rejected")))]
+        if ExecutionEventFactory.is_status(status_value, OrderStatus.CANCELLED):
             return [
-                OrderRejectedEvent(
-                    ts=events[0].ts,
+                ExecutionEventFactory.cancelled(
+                    event_ts,
+                    order_id=order_id,
                     client_order_id=order.client_order_id,
-                    reason=str(status.get("reason", "rejected")),
-                    order=order,
+                    reason=str(status.get("reason", "cancelled")),
                 )
             ]
 
-        if status_value != OrderStatus.FILLED and not str(status_value).lower().endswith("filled"):
+        events: list[TradingEvent] = [
+            ExecutionEventFactory.accepted(event_ts, order_id, order)
+        ]
+
+        if not ExecutionEventFactory.is_status(status_value, OrderStatus.FILLED):
             return events
 
-        trade = Trade(
-            order_id=order_id,
-            symbol=order.symbol,
-            side=order.side,
-            amount=float(status.get("filled", order.amount)),
-            price=float(status.get("avg_price", status.get("price", order.price or 0.0))),
-            fee=float(status.get("fee", 0.0)),
-            ts=event_ts,
-            meta=dict(order.meta) if getattr(order, "meta", None) else None,
-        )
-        events.append(
-            FillEvent.from_trade(
-                trade,
-                client_order_id=order.client_order_id,
-                command_reason=command.reason if isinstance(command, PlaceOrderCommand) else None,
-                source_tick=command.source_tick if isinstance(command, PlaceOrderCommand) else None,
-                continue_with_entry=command.continue_with_entry if isinstance(command, PlaceOrderCommand) else False,
-            )
-        )
+        events.append(ExecutionEventFactory.fill_from_status(command, order_id, status, event_ts))
         return events
+
+    async def _cancel_order_legacy(self, command: CancelOrderCommand, exchange: Exchange) -> list[TradingEvent]:
+        cancelled = await exchange.cancel_order(command.order_id)
+        event_ts = ExecutionEventFactory.event_ts(command.ts)
+        if cancelled is False:
+            return [ExecutionEventFactory.cancel_rejected(command, event_ts)]
+        return [
+            ExecutionEventFactory.cancelled(
+                event_ts,
+                command.order_id,
+                reason=command.reason,
+            )
+        ]

@@ -39,6 +39,14 @@ class OrderRejectedEvent:
 
 
 @dataclass(frozen=True)
+class OrderCancelledEvent:
+    ts: pd.Timestamp
+    order_id: str
+    client_order_id: str | None = None
+    reason: str | None = None
+
+
+@dataclass(frozen=True)
 class FillEvent:
     """Canonical execution fill event consumed by TradingEngine."""
 
@@ -100,7 +108,14 @@ class TimerEvent:
     payload: dict[str, Any] = field(default_factory=dict)
 
 
-TradingEvent = Union[MarketEvent, OrderAcceptedEvent, OrderRejectedEvent, FillEvent, TimerEvent]
+TradingEvent = Union[
+    MarketEvent,
+    OrderAcceptedEvent,
+    OrderRejectedEvent,
+    OrderCancelledEvent,
+    FillEvent,
+    TimerEvent,
+]
 
 # Backward-compatible names for older code/imports.
 TickEvent = MarketEvent

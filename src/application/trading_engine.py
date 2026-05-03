@@ -3,7 +3,7 @@ import inspect
 from core.interfaces.data_provider import DataProvider
 from core.interfaces.exchange import Exchange
 from core.interfaces.model import Model
-from core.types.commands import PlaceOrderCommand, TradingCommand
+from core.types.commands import CancelOrderCommand, PlaceOrderCommand, TradingCommand
 from core.types.events import FillEvent, MarketEvent, OrderRejectedEvent, TradingEvent
 from core.types.order_flags import ORDER_META_FILL_PRICE_FINAL
 from domain.execution.execution_service import ExecutionService
@@ -205,7 +205,7 @@ class TradingEngine:
         pending = list(commands)
         while pending:
             command = pending.pop(0)
-            if isinstance(command, PlaceOrderCommand):
+            if isinstance(command, (PlaceOrderCommand, CancelOrderCommand)):
                 command_events = await execution.execute(command, exchange)
                 events.extend(command_events)
                 for event in command_events:
