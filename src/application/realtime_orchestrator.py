@@ -4,6 +4,7 @@ import asyncio
 import logging
 from contextlib import suppress
 
+from application.event_journal import EventJournal
 from application.trading_engine import TradingEngine
 from application.trading_runtime_loop import TradingRuntimeLoop
 from core.interfaces.data_provider import DataProvider
@@ -29,8 +30,9 @@ class RealtimeOrchestrator:
         symbols: list[str],
         warmup_bars: int | None = None,
         runtime: TradingRuntimeLoop | None = None,
+        journal: EventJournal | None = None,
     ) -> None:
-        self._runtime = runtime or TradingRuntimeLoop(engine)
+        self._runtime = runtime or TradingRuntimeLoop(engine, journal=journal)
         self._data_provider = data_provider
         self._model = model
         self._symbols = symbols

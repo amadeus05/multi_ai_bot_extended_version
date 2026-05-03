@@ -1,5 +1,6 @@
 import inspect
 
+from application.event_journal import EventJournal
 from application.execution_event_deduplicator import ExecutionEventDeduplicator
 from core.interfaces.data_provider import DataProvider
 from core.interfaces.exchange import Exchange
@@ -54,9 +55,13 @@ class TradingEngine:
         self._running = False
         self._execution_listener = execution_listener
         self._execution_dedupe = ExecutionEventDeduplicator()
+        self._event_journal: EventJournal | None = None
 
     def set_execution_listener(self, listener) -> None:
         self._execution_listener = listener
+
+    def set_event_journal(self, journal: EventJournal | None) -> None:
+        self._event_journal = journal
 
     @staticmethod
     def _tick_price(tick, name: str, fallback: float) -> float:
@@ -218,9 +223,13 @@ class TradingEngine:
         while pending:
             command = pending.pop(0)
             if isinstance(command, (PlaceOrderCommand, CancelOrderCommand)):
+                if self._event_journal is not None:
+                    await self._event_journal.record_command(command, source="engine")
                 command_events = await execution.execute(command, exchange)
                 events.extend(command_events)
                 for event in command_events:
+                    if self._event_journal is not None:
+                        await self._event_journal.record_event(event, source="execution")
                     pending.extend(await self.process_event(event))
         return events
 

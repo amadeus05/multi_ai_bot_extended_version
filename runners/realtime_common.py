@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from application.realtime_orchestrator import RealtimeOrchestrator
 from application.trading_runtime_factory import build_trading_engine
-from core.interfaces.exchange import Exchange
+from core.config.loader import load_storage_settings
 from core.interfaces.model import Model
+from core.interfaces.exchange import Exchange
 from infrastructure.data_providers.websocket_provider import WebSocketProvider
+from infrastructure.storage.storage_factory import build_event_journal
 
 
 def build_realtime_orchestrator(
@@ -25,10 +27,12 @@ def build_realtime_orchestrator(
         data_provider=data_provider,
         model=model,
     )
+    journal = build_event_journal(load_storage_settings())
     return RealtimeOrchestrator(
         engine=engine,
         data_provider=data_provider,
         model=model,
         symbols=list(trading.symbols),
         warmup_bars=max(200, model.required_bars()),
+        journal=journal,
     )

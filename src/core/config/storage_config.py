@@ -11,3 +11,6 @@ class StorageSettings:
     supabase_service_key: str = ""
     supabase_schema: str = "public"
     events_table: str = "trading_events"
+    journal_enabled: bool = False
+    journal_session_id: str = ""
+    journal_source: str = "trading_runtime"

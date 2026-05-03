@@ -165,5 +165,8 @@ def load_storage_settings(overrides: dict[str, Any] | None = None) -> StorageSet
         supabase_service_key=_env(("SUPABASE_SERVICE_KEY", "SUPABASE_SERVICE_ROLE_KEY"), ""),
         supabase_schema=_env("SUPABASE_SCHEMA", "public"),
         events_table=_env("STORAGE_EVENTS_TABLE", "trading_events"),
+        journal_enabled=_bool(_env("EVENT_JOURNAL_ENABLED", "0")),
+        journal_session_id=_env("EVENT_JOURNAL_SESSION_ID", ""),
+        journal_source=_env("EVENT_JOURNAL_SOURCE", "trading_runtime"),
     )
     return _apply_overrides(settings, overrides)
