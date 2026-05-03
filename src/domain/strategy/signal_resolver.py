@@ -1,3 +1,6 @@
+import math
+
+
 def resolve_directional_signal(
     p_long: float,
     p_short: float,
@@ -13,12 +16,19 @@ def resolve_directional_signal(
             direction_prob: probability of the chosen direction (or max prob if neutral)
             signal_gap: absolute difference between p_long and p_short
     """
-    signal_gap = abs(float(p_long) - float(p_short))
-    threshold = float(directional_proba_threshold)
-    min_gap = float(min_signal_gap)
+    p_long = float(p_long)
+    p_short = float(p_short)
+    if not math.isfinite(p_long) or not math.isfinite(p_short):
+        return 0, 0.5, 0.0
 
-    if p_long >= threshold and (p_long - p_short) >= min_gap:
-        return 1, float(p_long), float(signal_gap)
-    if p_short >= threshold and (p_short - p_long) >= min_gap:
-        return -1, float(p_short), float(signal_gap)
-    return 0, max(float(p_long), float(p_short)), float(signal_gap)
+    signal_gap = abs(p_long - p_short)
+    threshold = float(directional_proba_threshold)
+    min_gap = max(0.0, float(min_signal_gap))
+
+    long_edge = p_long - p_short
+    short_edge = p_short - p_long
+    if p_long > threshold and long_edge > min_gap:
+        return 1, p_long, float(signal_gap)
+    if p_short > threshold and short_edge > min_gap:
+        return -1, p_short, float(signal_gap)
+    return 0, max(p_long, p_short), float(signal_gap)

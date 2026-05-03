@@ -13,8 +13,8 @@ class BacktestParitySignalStrategy(Strategy):
     def __init__(
         self,
         *,
-        directional_proba_threshold: float = 0.5,
-        min_signal_gap: float = 0.0,
+        directional_proba_threshold: float = 0.55,
+        min_signal_gap: float = 0.05,
         allow_longs: bool = True,
         allow_shorts: bool = True,
         entry_amount: float = 1.0,

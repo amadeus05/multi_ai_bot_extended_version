@@ -88,9 +88,9 @@ def load_trading_settings(
             allow_longs=_bool(_env(("SIGNAL_ALLOW_LONGS", "ALLOW_LONGS"), "1")),
             allow_shorts=_bool(_env(("SIGNAL_ALLOW_SHORTS", "ALLOW_SHORTS"), "1")),
             directional_proba_threshold=float(
-                _env(("SIGNAL_PROBA_THRESHOLD", "DIRECTIONAL_PROBA_THRESHOLD"), "0.5")
+                _env(("SIGNAL_PROBA_THRESHOLD", "DIRECTIONAL_PROBA_THRESHOLD"), "0.55")
             ),
-            min_signal_gap=float(_env(("SIGNAL_MIN_GAP", "MIN_SIGNAL_GAP"), "0.0")),
+            min_signal_gap=float(_env(("SIGNAL_MIN_GAP", "MIN_SIGNAL_GAP"), "0.05")),
         ),
         risk=RiskSettings(
             risk_per_trade=float(_env(("RISK_PER_TRADE",), "0.1")),
