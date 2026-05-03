@@ -1,10 +1,18 @@
 import inspect
 
+from application.execution_event_deduplicator import ExecutionEventDeduplicator
 from core.interfaces.data_provider import DataProvider
 from core.interfaces.exchange import Exchange
 from core.interfaces.model import Model
 from core.types.commands import CancelOrderCommand, PlaceOrderCommand, TradingCommand
-from core.types.events import FillEvent, MarketEvent, OrderRejectedEvent, TradingEvent
+from core.types.events import (
+    FillEvent,
+    MarketEvent,
+    OrderAcceptedEvent,
+    OrderCancelledEvent,
+    OrderRejectedEvent,
+    TradingEvent,
+)
 from core.types.order_flags import ORDER_META_FILL_PRICE_FINAL
 from domain.execution.execution_service import ExecutionService
 from domain.portfolio.portfolio_manager import PortfolioManager
@@ -45,6 +53,7 @@ class TradingEngine:
         }
         self._running = False
         self._execution_listener = execution_listener
+        self._execution_dedupe = ExecutionEventDeduplicator()
 
     def set_execution_listener(self, listener) -> None:
         self._execution_listener = listener
@@ -187,6 +196,9 @@ class TradingEngine:
     async def process_event(self, event: TradingEvent) -> list[TradingCommand]:
         if isinstance(event, MarketEvent):
             return await self._commands_for_market_event(event)
+        if isinstance(event, (OrderAcceptedEvent, OrderCancelledEvent, OrderRejectedEvent, FillEvent)):
+            if not self._execution_dedupe.should_process(event):
+                return []
         if isinstance(event, FillEvent):
             await self._apply_fill(event)
             if event.continue_with_entry and event.source_tick is not None:
@@ -194,7 +206,7 @@ class TradingEngine:
             if event.command_reason == "ENTRY" and event.source_tick is not None:
                 return await self._commands_for_exit_tick(event.source_tick, reason_suffix="INTRA-BAR")
             return []
-        if isinstance(event, OrderRejectedEvent):
+        if isinstance(event, (OrderAcceptedEvent, OrderCancelledEvent, OrderRejectedEvent)):
             return []
         return []
 
@@ -256,6 +268,7 @@ class TradingEngine:
                         command_reason=event.command_reason,
                         source_tick=event.source_tick,
                         continue_with_entry=event.continue_with_entry,
+                        event_id=event.event_id,
                     )
                 await self.process_event(event)
 

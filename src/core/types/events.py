@@ -28,6 +28,7 @@ class OrderAcceptedEvent:
     order_id: str
     client_order_id: str
     order: Order
+    event_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -36,6 +37,7 @@ class OrderRejectedEvent:
     client_order_id: str | None
     reason: str
     order: Order | None = None
+    event_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -44,6 +46,7 @@ class OrderCancelledEvent:
     order_id: str
     client_order_id: str | None = None
     reason: str | None = None
+    event_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -62,6 +65,7 @@ class FillEvent:
     command_reason: str | None = None
     source_tick: Tick | None = None
     continue_with_entry: bool = False
+    event_id: str | None = None
 
     @classmethod
     def from_trade(
@@ -72,6 +76,7 @@ class FillEvent:
         command_reason: str | None = None,
         source_tick: Tick | None = None,
         continue_with_entry: bool = False,
+        event_id: str | None = None,
     ) -> "FillEvent":
         return cls(
             ts=trade.ts,
@@ -86,6 +91,7 @@ class FillEvent:
             command_reason=command_reason,
             source_tick=source_tick,
             continue_with_entry=continue_with_entry,
+            event_id=event_id,
         )
 
     def to_trade(self) -> Trade:

@@ -23,15 +23,18 @@ class ExecutionEventFactory:
             order_id=order_id,
             client_order_id=order.client_order_id,
             order=order,
+            event_id=f"{order_id}:accepted",
         )
 
     @staticmethod
     def rejected(ts: pd.Timestamp, order: Order | None, reason: str) -> OrderRejectedEvent:
+        client_order_id = order.client_order_id if order is not None else None
         return OrderRejectedEvent(
             ts=ts,
-            client_order_id=order.client_order_id if order is not None else None,
+            client_order_id=client_order_id,
             reason=reason,
             order=order,
+            event_id=f"{client_order_id or 'unknown'}:rejected:{reason}",
         )
 
     @staticmethod
@@ -47,10 +50,12 @@ class ExecutionEventFactory:
             order_id=order_id,
             client_order_id=client_order_id,
             reason=reason,
+            event_id=f"{order_id}:cancelled",
         )
 
-    @staticmethod
+    @classmethod
     def fill_from_status(
+        cls,
         command: PlaceOrderCommand,
         order_id: str,
         status: dict,
@@ -73,8 +78,20 @@ class ExecutionEventFactory:
             command_reason=command.reason,
             source_tick=command.source_tick,
             continue_with_entry=command.continue_with_entry,
+            event_id=cls.fill_event_id(order_id, status),
         )
 
     @classmethod
     def cancel_rejected(cls, command: CancelOrderCommand, ts: pd.Timestamp) -> OrderRejectedEvent:
         return cls.rejected(ts, None, f"cancel failed: {command.order_id}")
+
+    @staticmethod
+    def fill_event_id(order_id: str, status: dict) -> str:
+        fill_id = (
+            status.get("execution_id")
+            or status.get("exec_id")
+            or status.get("fill_id")
+            or status.get("trade_id")
+            or "1"
+        )
+        return f"{order_id}:fill:{fill_id}"

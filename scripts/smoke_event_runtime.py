@@ -82,6 +82,7 @@ class NoBarrierPolicy:
 
 async def main() -> None:
     await smoke_simulated_exchange_lifecycle()
+    await smoke_duplicate_fill_is_ignored()
     await smoke_entry_and_intrabar_exit()
     await smoke_exit_then_reenter_same_tick()
     print("event runtime smoke ok")
@@ -106,6 +107,31 @@ async def smoke_simulated_exchange_lifecycle() -> None:
     )
     assert [type(event) for event in cancel_events] == [OrderCancelledEvent], cancel_events
     assert cancel_events[0].order_id == events[0].order_id
+
+
+async def smoke_duplicate_fill_is_ignored() -> None:
+    ts = pd.Timestamp("2024-01-02 00:00:00")
+    portfolio = PortfolioManager(cash={"USDT": 1000.0})
+    engine = TradingEngine(
+        exchange=SimulatedExchange(commission=0.0, slippage=0.0, leverage=1.0),
+        data_provider=StaticDataProvider(),
+        model=StaticModel(),
+        strategy=LongOnlyStrategy(),
+        risk_manager=PassThroughRisk(),
+        portfolio=portfolio,
+        execution=ExecutionService(),
+        barrier_policy=NoBarrierPolicy(),
+    )
+    order = Order(symbol="BTC/USDT", side=OrderSide.BUY, amount=1.0, price=100.0)
+    events = await engine.execute_commands(
+        [PlaceOrderCommand(order, reason="ENTRY", ts=ts)]
+    )
+    fill = next(event for event in events if isinstance(event, FillEvent))
+
+    await engine.process_event(fill)
+
+    assert len(portfolio.trades) == 1, portfolio.get_state_snapshot()
+    assert len(portfolio.get_open_positions()) == 1, portfolio.get_state_snapshot()
 
 
 async def smoke_entry_and_intrabar_exit() -> None:
