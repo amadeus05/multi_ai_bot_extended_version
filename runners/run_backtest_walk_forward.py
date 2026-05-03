@@ -18,9 +18,11 @@ from application.backtest_trade_export import export_closed_trades_csv
 from application.inference.walk_forward_model import WalkForwardPredictionModel
 from application.training.data_loader import load_training_frame
 from application.training.walk_forward_pipeline import WalkForwardPipeline
+from application.trading_runtime_loop import TradingRuntimeLoop
 from application.trading_runtime_factory import build_trading_engine
 from core.config.loader import load_backtest_settings
 from core.config.train_config import TrainConfig
+from core.types.events import MarketEvent
 from domain.portfolio.portfolio_manager import PortfolioManager
 from infrastructure.data_providers.historical_replay_provider import HistoricalReplayProvider
 from infrastructure.exchanges.simulation.simulated_exchange import SimulatedExchange
@@ -133,6 +135,7 @@ async def main() -> None:
         portfolio=portfolio,
         execution_listener=reporter.on_execution,
     )
+    runtime = TradingRuntimeLoop(engine)
 
     print(
         f"TradingEngine Walk-forward OOS backtest | {symbol} | rows={len(frame)} | "
@@ -143,7 +146,7 @@ async def main() -> None:
     print("-" * 80)
 
     for tick in data_provider.iter_replay_ticks():
-        await engine.on_market_event(tick)
+        await runtime.process_once(MarketEvent(tick))
         mark = float(tick.close if tick.close is not None else tick.price)
         reporter.record_equity(tick.ts, {symbol: mark})
 
