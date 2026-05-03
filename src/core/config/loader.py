@@ -14,6 +14,7 @@ from core.config.settings import (
     SignalSettings,
     TradingSettings,
 )
+from core.config.storage_config import StorageSettings
 
 
 def _load_env() -> None:
@@ -152,5 +153,17 @@ def load_live_settings(overrides: dict[str, Any] | None = None) -> LiveSettings:
         api_secret=_env("API_SECRET", ""),
         ws_url=_env("WS_URL", "wss://stream.bybit.com/v5/public/linear"),
         testnet=_bool(_env("LIVE_TESTNET", "0")),
+    )
+    return _apply_overrides(settings, overrides)
+
+
+def load_storage_settings(overrides: dict[str, Any] | None = None) -> StorageSettings:
+    settings = StorageSettings(
+        driver=_env("STORAGE_DRIVER", "sqlite").strip().lower(),
+        sqlite_path=_env(("STORAGE_SQLITE_PATH", "SQLITE_PATH"), "data/trading_runtime.sqlite"),
+        supabase_url=_env("SUPABASE_URL", ""),
+        supabase_service_key=_env(("SUPABASE_SERVICE_KEY", "SUPABASE_SERVICE_ROLE_KEY"), ""),
+        supabase_schema=_env("SUPABASE_SCHEMA", "public"),
+        events_table=_env("STORAGE_EVENTS_TABLE", "trading_events"),
     )
     return _apply_overrides(settings, overrides)
