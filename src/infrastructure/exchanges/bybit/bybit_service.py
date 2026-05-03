@@ -4,8 +4,6 @@ import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 
-from core.interfaces.exchange import Exchange
-from core.types.domain_types import Order, Position
 from core.types.market_data import FundingRatePoint, HistoricalKline, OpenInterestPoint
 from infrastructure.exchanges.bybit.bybit_adapter import BybitAdapter
 from infrastructure.exchanges.bybit.bybit_mapper import BybitMapper
@@ -14,18 +12,12 @@ from infrastructure.exchanges.bybit.bybit_mapper import BybitMapper
 logger = logging.getLogger(__name__)
 
 
-class BybitService(Exchange):
+class BybitService:
     def __init__(
         self,
-        api_key: str = "",
-        secret: str = "",
-        testnet: bool = False,
         adapter: BybitAdapter | None = None,
         mapper: BybitMapper | None = None,
     ) -> None:
-        self._api_key = api_key
-        self._secret = secret
-        self._testnet = testnet
         self.adapter = adapter or BybitAdapter()
         self.mapper = mapper or BybitMapper()
 
@@ -281,22 +273,3 @@ class BybitService(Exchange):
 
         deduped_points = {point.funding_time: point for point in all_points}
         return [deduped_points[key] for key in sorted(deduped_points)]
-
-    # ---- Exchange contract methods (live/paper execution placeholder) ----
-    async def place_order(self, order: Order) -> str:
-        raise NotImplementedError("place_order is not implemented for Bybit history adapter")
-
-    async def cancel_order(self, order_id: str) -> None:
-        raise NotImplementedError("cancel_order is not implemented for Bybit history adapter")
-
-    async def get_balance(self, asset: str) -> float:
-        raise NotImplementedError("get_balance is not implemented for Bybit history adapter")
-
-    async def get_positions(self) -> list[Position]:
-        return []
-
-    async def current_price(self, symbol: str) -> float:
-        raise NotImplementedError("current_price is not implemented for Bybit history adapter")
-
-    async def get_order_status(self, order_id: str) -> dict:
-        raise NotImplementedError("get_order_status is not implemented for Bybit history adapter")
