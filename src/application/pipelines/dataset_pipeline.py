@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 import pandas as pd
 
 from core.config.dataset_config import DatasetConfig
-from domain.ml.features import MasterFeatureBuilder
+from domain.ml.features import MarketContextAssembler, MasterFeatureBuilder
 from domain.ml.labeling import LabelingConfig, finalize_feature_frame, triple_barrier_labeling
 from domain.ml.labeling.barrier_policy import BarrierPolicy
 from infrastructure.exchanges.bybit.bybit_service import BybitService
@@ -24,6 +24,7 @@ class DatasetPipeline:
         self.writer = ParquetWriter(cfg.output_dir)
         self.bybit = BybitService()
         self.feature_builder = MasterFeatureBuilder()
+        self.context_assembler = MarketContextAssembler()
 
     def run(self) -> list[Path]:
         logger.info(
@@ -106,70 +107,42 @@ class DatasetPipeline:
         return outputs
 
     def _attach_optional_market_context(self, symbol: str, frame: pd.DataFrame) -> pd.DataFrame:
-        output = frame.copy()
-        output["timestamp"] = pd.to_datetime(output["timestamp"], errors="coerce")
-        output["timestamp"] = output["timestamp"].astype("datetime64[ns]")
-        output = output.dropna(subset=["timestamp"]).sort_values("timestamp").reset_index(drop=True)
+        contexts: dict[str, pd.DataFrame] = {}
         if self.cfg.include_open_interest:
             logger.info("[%s] loading open interest...", symbol)
             open_interest_df = self._load_or_sync_open_interest(symbol)
-            open_interest = open_interest_df.to_dict("records")
-            if open_interest:
-                open_interest_df["timestamp"] = pd.to_datetime(open_interest_df["timestamp"], errors="coerce")
-                open_interest_df["timestamp"] = open_interest_df["timestamp"].astype("datetime64[ns]")
-                open_interest_df = open_interest_df.dropna(subset=["timestamp"]).sort_values("timestamp").reset_index(drop=True)
-                output = pd.merge_asof(
-                    output,
-                    open_interest_df,
-                    on="timestamp",
-                    direction="backward",
-                )
-                output["open_interest"] = output["open_interest"].ffill().fillna(0.0)
-                logger.info("[%s] attached open interest points=%s", symbol, len(open_interest))
+            open_interest_df = self.context_assembler.dedupe_rows(open_interest_df)
+            if not open_interest_df.empty:
+                contexts["open_interest"] = open_interest_df
+                logger.info("[%s] attached open interest points=%s", symbol, len(open_interest_df))
             else:
                 logger.info("[%s] open interest is empty", symbol)
 
         if self.cfg.include_funding:
             logger.info("[%s] loading funding rates...", symbol)
             funding_df = self._load_or_sync_funding(symbol)
-            funding = funding_df.to_dict("records")
-            if funding:
-                funding_df["timestamp"] = pd.to_datetime(funding_df["timestamp"], errors="coerce")
-                funding_df["timestamp"] = funding_df["timestamp"].astype("datetime64[ns]")
-                funding_df = funding_df.dropna(subset=["timestamp"]).sort_values("timestamp").reset_index(drop=True)
-                output = pd.merge_asof(
-                    output,
-                    funding_df,
-                    on="timestamp",
-                    direction="backward",
-                )
-                output["funding_rate"] = output["funding_rate"].ffill().fillna(0.0)
-                logger.info("[%s] attached funding points=%s", symbol, len(funding))
+            funding_df = self.context_assembler.dedupe_rows(funding_df)
+            if not funding_df.empty:
+                contexts["funding_rate"] = funding_df
+                logger.info("[%s] attached funding points=%s", symbol, len(funding_df))
             else:
                 logger.info("[%s] funding is empty", symbol)
 
         if self.cfg.include_premium_index:
             logger.info("[%s] loading premium index...", symbol)
             premium_index_df = self._load_or_sync_premium_index(symbol)
-            premium_index = premium_index_df.to_dict("records")
-            if premium_index:
-                premium_index_df["timestamp"] = pd.to_datetime(premium_index_df["timestamp"], errors="coerce")
-                premium_index_df["timestamp"] = premium_index_df["timestamp"].astype("datetime64[ns]")
-                premium_index_df = (
-                    premium_index_df.dropna(subset=["timestamp"]).sort_values("timestamp").reset_index(drop=True)
-                )
-                output = pd.merge_asof(
-                    output,
-                    premium_index_df,
-                    on="timestamp",
-                    direction="backward",
-                )
-                output["premium_index_close"] = output["premium_index_close"].ffill().fillna(0.0)
-                logger.info("[%s] attached premium index points=%s", symbol, len(premium_index))
+            premium_index_df = self.context_assembler.dedupe_rows(premium_index_df)
+            if not premium_index_df.empty:
+                contexts["premium_index_close"] = premium_index_df
+                logger.info("[%s] attached premium index points=%s", symbol, len(premium_index_df))
             else:
                 logger.info("[%s] premium index is empty", symbol)
 
-        return output
+        return self.context_assembler.attach_contexts(
+            frame,
+            contexts,
+            add_missing_columns=False,
+        )
 
     def _cache_file(self, symbol: str, suffix: str, timeframe: str | None = None) -> Path:
         symbol_key = symbol.replace("/", "")
@@ -242,9 +215,7 @@ class DatasetPipeline:
         timeframe_ms = self.bybit.get_timeframe_ms(timeframe)
         existing = pd.read_parquet(cache_path) if cache_path.exists() else pd.DataFrame()
         if not existing.empty:
-            existing["timestamp"] = pd.to_datetime(existing["timestamp"], errors="coerce")
-            existing = existing.dropna(subset=["timestamp"])
-            existing = existing.sort_values("timestamp").drop_duplicates(subset=["timestamp"], keep="last")
+            existing = self.context_assembler.dedupe_rows(existing)
             if self._is_cache_complete(existing, timeframe_ms):
                 logger.info("[%s-%s] klines cache fully covers requested range, skipping reload", symbol, timeframe)
                 merged = existing
@@ -267,7 +238,7 @@ class DatasetPipeline:
 
         if merged.empty:
             return merged
-        merged = merged.sort_values("timestamp").drop_duplicates(subset=["timestamp"], keep="last")
+        merged = self.context_assembler.dedupe_rows(merged)
         start_ts = pd.to_datetime(self.cfg.start_ts_ms, unit="ms", utc=True).tz_convert(None)
         end_ts = pd.to_datetime(self.cfg.end_ts_ms, unit="ms", utc=True).tz_convert(None)
         merged = merged[(merged["timestamp"] >= start_ts) & (merged["timestamp"] <= end_ts)].reset_index(drop=True)
@@ -299,9 +270,7 @@ class DatasetPipeline:
         timeframe_ms = self.bybit.get_timeframe_ms(self.cfg.timeframe)
         existing = pd.read_parquet(cache_path) if cache_path.exists() else pd.DataFrame()
         if not existing.empty:
-            existing["timestamp"] = pd.to_datetime(existing["timestamp"], errors="coerce")
-            existing = existing.dropna(subset=["timestamp"])
-            existing = existing.sort_values("timestamp").drop_duplicates(subset=["timestamp"], keep="last")
+            existing = self.context_assembler.dedupe_rows(existing)
             if self._is_cache_complete(existing, timeframe_ms):
                 logger.info("[%s] open interest cache fully covers requested range, skipping reload", symbol)
                 merged = existing
@@ -338,13 +307,7 @@ class DatasetPipeline:
             )
         if merged.empty:
             return merged
-        merged["timestamp"] = pd.to_datetime(merged["timestamp"], errors="coerce")
-        merged = (
-            merged.dropna(subset=["timestamp"])
-            .sort_values("timestamp")
-            .drop_duplicates(subset=["timestamp"], keep="last")
-            .reset_index(drop=True)
-        )
+        merged = self.context_assembler.dedupe_rows(merged)
         self.writer.write(merged, str(cache_path.relative_to(Path(self.cfg.output_dir))))
         return merged
 
@@ -353,9 +316,7 @@ class DatasetPipeline:
         funding_ms = self.bybit.get_funding_interval_ms(symbol)
         existing = pd.read_parquet(cache_path) if cache_path.exists() else pd.DataFrame()
         if not existing.empty:
-            existing["timestamp"] = pd.to_datetime(existing["timestamp"], errors="coerce")
-            existing = existing.dropna(subset=["timestamp"])
-            existing = existing.sort_values("timestamp").drop_duplicates(subset=["timestamp"], keep="last")
+            existing = self.context_assembler.dedupe_rows(existing)
             if self._is_cache_complete(existing, funding_ms):
                 logger.info("[%s] funding cache fully covers requested range, skipping reload", symbol)
                 merged = existing
@@ -392,13 +353,7 @@ class DatasetPipeline:
             )
         if merged.empty:
             return merged
-        merged["timestamp"] = pd.to_datetime(merged["timestamp"], errors="coerce")
-        merged = (
-            merged.dropna(subset=["timestamp"])
-            .sort_values("timestamp")
-            .drop_duplicates(subset=["timestamp"], keep="last")
-            .reset_index(drop=True)
-        )
+        merged = self.context_assembler.dedupe_rows(merged)
         self.writer.write(merged, str(cache_path.relative_to(Path(self.cfg.output_dir))))
         return merged
 
@@ -409,9 +364,7 @@ class DatasetPipeline:
         if not existing.empty:
             if "premium_index" in existing.columns and "premium_index_close" not in existing.columns:
                 existing = existing.rename(columns={"premium_index": "premium_index_close"})
-            existing["timestamp"] = pd.to_datetime(existing["timestamp"], errors="coerce")
-            existing = existing.dropna(subset=["timestamp"])
-            existing = existing.sort_values("timestamp").drop_duplicates(subset=["timestamp"], keep="last")
+            existing = self.context_assembler.dedupe_rows(existing)
             if self._is_cache_complete(existing, timeframe_ms):
                 logger.info("[%s] premium index cache fully covers requested range, skipping reload", symbol)
                 merged = existing
@@ -460,12 +413,6 @@ class DatasetPipeline:
             )
         if merged.empty:
             return merged
-        merged["timestamp"] = pd.to_datetime(merged["timestamp"], errors="coerce")
-        merged = (
-            merged.dropna(subset=["timestamp"])
-            .sort_values("timestamp")
-            .drop_duplicates(subset=["timestamp"], keep="last")
-            .reset_index(drop=True)
-        )
+        merged = self.context_assembler.dedupe_rows(merged)
         self.writer.write(merged, str(cache_path.relative_to(Path(self.cfg.output_dir))))
         return merged

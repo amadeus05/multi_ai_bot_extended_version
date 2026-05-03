@@ -9,7 +9,7 @@ import pandas as pd
 from core.config.base import BaseConfig
 from core.interfaces.data_provider import DataProvider
 from core.types.domain_types import Tick
-from domain.ml.features import MasterFeatureBuilder
+from domain.ml.features import MarketContextAssembler, MasterFeatureBuilder
 from infrastructure.exchanges.bybit.bybit_kline_stream import BybitKlineStream
 from infrastructure.exchanges.bybit.bybit_mapper import BybitMapper
 from infrastructure.exchanges.bybit.bybit_service import BybitService
@@ -26,6 +26,7 @@ class WebSocketProvider(DataProvider):
         self._mapper = BybitMapper()
         self._service = BybitService()
         self._feature_builder = MasterFeatureBuilder()
+        self._context_assembler = MarketContextAssembler()
         self._stream = BybitKlineStream(url=ws_url)
         self._history: dict[str, pd.DataFrame] = {}
         self._htf_history: dict[str, pd.DataFrame] = {}
@@ -70,40 +71,13 @@ class WebSocketProvider(DataProvider):
             "symbol": symbol,
         }
 
-    @staticmethod
-    def _dedupe_rows(df: pd.DataFrame) -> pd.DataFrame:
-        if df.empty:
-            return df
-        out = df.copy()
-        out["timestamp"] = pd.to_datetime(out["timestamp"], errors="coerce").astype("datetime64[ns]")
-        out = out.dropna(subset=["timestamp"])
-        out = out.sort_values("timestamp").drop_duplicates(subset=["timestamp"], keep="last").reset_index(drop=True)
-        return out
-
-    @staticmethod
-    def _merge_asof_context(base: pd.DataFrame, context: pd.DataFrame, value_col: str) -> pd.DataFrame:
-        if base.empty:
-            return base
-        out = base.copy()
-        out["timestamp"] = pd.to_datetime(out["timestamp"], errors="coerce").astype("datetime64[ns]")
-        out = out.dropna(subset=["timestamp"]).sort_values("timestamp").reset_index(drop=True)
-        if context.empty or value_col not in context.columns:
-            out[value_col] = 0.0
-            return out
-        ctx = context.copy()
-        ctx["timestamp"] = pd.to_datetime(ctx["timestamp"], errors="coerce").astype("datetime64[ns]")
-        ctx = ctx.dropna(subset=["timestamp"]).sort_values("timestamp").reset_index(drop=True)
-        out = pd.merge_asof(out, ctx[["timestamp", value_col]], on="timestamp", direction="backward")
-        out[value_col] = out[value_col].ffill().fillna(0.0)
-        return out
-
     def _sync_open_interest(self, symbol: str, start_ms: int, end_ms: int) -> None:
         if not self._include_open_interest or start_ms > end_ms:
             return
         tf_ms = self._service.get_timeframe_ms(self._timeframe)
         existing = self._open_interest.get(symbol, pd.DataFrame())
         if not existing.empty:
-            existing = self._dedupe_rows(existing)
+            existing = self._context_assembler.dedupe_rows(existing)
             last_ms = int(existing["timestamp"].iloc[-1].timestamp() * 1000)
             start_ms = max(start_ms, last_ms + tf_ms)
         fresh = self._service.fetch_open_interest(symbol, self._timeframe, start_ms, end_ms) if start_ms <= end_ms else []
@@ -114,7 +88,7 @@ class WebSocketProvider(DataProvider):
             }
         )
         merged = pd.concat([existing, fresh_df], ignore_index=True) if not existing.empty else fresh_df
-        self._open_interest[symbol] = self._dedupe_rows(merged).tail(6000).reset_index(drop=True)
+        self._open_interest[symbol] = self._context_assembler.dedupe_rows(merged).tail(6000).reset_index(drop=True)
 
     def _sync_funding(self, symbol: str, start_ms: int, end_ms: int) -> None:
         if not self._include_funding or start_ms > end_ms:
@@ -122,7 +96,7 @@ class WebSocketProvider(DataProvider):
         funding_ms = self._service.get_funding_interval_ms(symbol)
         existing = self._funding.get(symbol, pd.DataFrame())
         if not existing.empty:
-            existing = self._dedupe_rows(existing)
+            existing = self._context_assembler.dedupe_rows(existing)
             last_ms = int(existing["timestamp"].iloc[-1].timestamp() * 1000)
             start_ms = max(start_ms, last_ms + funding_ms)
         fresh = self._service.fetch_funding_rates(symbol, start_ms, end_ms) if start_ms <= end_ms else []
@@ -133,7 +107,7 @@ class WebSocketProvider(DataProvider):
             }
         )
         merged = pd.concat([existing, fresh_df], ignore_index=True) if not existing.empty else fresh_df
-        self._funding[symbol] = self._dedupe_rows(merged).tail(6000).reset_index(drop=True)
+        self._funding[symbol] = self._context_assembler.dedupe_rows(merged).tail(6000).reset_index(drop=True)
 
     def _sync_premium_index(self, symbol: str, start_ms: int, end_ms: int) -> None:
         if not self._include_premium_index or start_ms > end_ms:
@@ -141,7 +115,7 @@ class WebSocketProvider(DataProvider):
         tf_ms = self._service.get_timeframe_ms(self._timeframe)
         existing = self._premium_index.get(symbol, pd.DataFrame())
         if not existing.empty:
-            existing = self._dedupe_rows(existing)
+            existing = self._context_assembler.dedupe_rows(existing)
             last_ms = int(existing["timestamp"].iloc[-1].timestamp() * 1000)
             start_ms = max(start_ms, last_ms + tf_ms)
         fresh = self._service.fetch_premium_index_klines(symbol, self._timeframe, start_ms, end_ms) if start_ms <= end_ms else []
@@ -152,7 +126,7 @@ class WebSocketProvider(DataProvider):
             }
         )
         merged = pd.concat([existing, fresh_df], ignore_index=True) if not existing.empty else fresh_df
-        self._premium_index[symbol] = self._dedupe_rows(merged).tail(6000).reset_index(drop=True)
+        self._premium_index[symbol] = self._context_assembler.dedupe_rows(merged).tail(6000).reset_index(drop=True)
 
     def _sync_context(self, symbol: str, start_ms: int, end_ms: int) -> None:
         self._sync_open_interest(symbol, start_ms, end_ms)
@@ -165,23 +139,27 @@ class WebSocketProvider(DataProvider):
         htf_ms = self._service.get_timeframe_ms(self._htf_timeframe)
         existing = self._htf_history.get(symbol, pd.DataFrame())
         if not existing.empty:
-            existing = self._dedupe_rows(existing)
+            existing = self._context_assembler.dedupe_rows(existing)
             last_ms = int(existing["timestamp"].iloc[-1].timestamp() * 1000)
             start_ms = max(start_ms, last_ms + htf_ms)
         fresh = self._service.fetch_klines(symbol, self._htf_timeframe, start_ms, end_ms) if start_ms <= end_ms else []
         fresh_df = pd.DataFrame([self._kline_to_row(symbol, candle) for candle in fresh])
         merged = pd.concat([existing, fresh_df], ignore_index=True) if not existing.empty else fresh_df
-        self._htf_history[symbol] = self._dedupe_rows(merged).tail(6000).reset_index(drop=True)
+        self._htf_history[symbol] = self._context_assembler.dedupe_rows(merged).tail(6000).reset_index(drop=True)
 
     def _enrich_history(self, symbol: str, frame: pd.DataFrame) -> pd.DataFrame:
-        out = frame
+        contexts: dict[str, pd.DataFrame] = {}
         if self._include_open_interest:
-            out = self._merge_asof_context(out, self._open_interest.get(symbol, pd.DataFrame()), "open_interest")
+            contexts["open_interest"] = self._open_interest.get(symbol, pd.DataFrame())
         if self._include_funding:
-            out = self._merge_asof_context(out, self._funding.get(symbol, pd.DataFrame()), "funding_rate")
+            contexts["funding_rate"] = self._funding.get(symbol, pd.DataFrame())
         if self._include_premium_index:
-            out = self._merge_asof_context(out, self._premium_index.get(symbol, pd.DataFrame()), "premium_index_close")
-        return out
+            contexts["premium_index_close"] = self._premium_index.get(symbol, pd.DataFrame())
+        return self._context_assembler.attach_contexts(
+            frame,
+            contexts,
+            add_missing_columns=True,
+        )
 
     def _build_feature_frame(self, symbol: str, bars: int) -> pd.DataFrame:
         base_map: dict[str, pd.DataFrame] = {}
@@ -217,7 +195,7 @@ class WebSocketProvider(DataProvider):
         klines = self._service.fetch_klines(normalized, self._timeframe, start_ms, now_ms)
         loaded = pd.DataFrame([self._kline_to_row(normalized, candle) for candle in klines])
         merged = pd.concat([current, loaded], ignore_index=True) if not current.empty else loaded
-        merged = self._dedupe_rows(merged)
+        merged = self._context_assembler.dedupe_rows(merged)
         self._history[normalized] = merged
         if merged.empty:
             logger.warning("[%s] warmup loaded empty dataframe", normalized)
@@ -255,7 +233,7 @@ class WebSocketProvider(DataProvider):
             row = self._event_to_row(symbol, event)
             current = self._history.get(symbol, pd.DataFrame())
             updated = pd.concat([current, pd.DataFrame([row])], ignore_index=True) if not current.empty else pd.DataFrame([row])
-            updated = self._dedupe_rows(updated)
+            updated = self._context_assembler.dedupe_rows(updated)
             history = updated.tail(4000).reset_index(drop=True)
             self._history[symbol] = history
             end_ms = int(pd.to_datetime(history["timestamp"].iloc[-1]).timestamp() * 1000)
