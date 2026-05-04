@@ -175,9 +175,10 @@ class PortfolioManager:
             if not np.isfinite(px):
                 print(f"CRITICAL: Non-finite price for {position.symbol}: {px}")
                 px = position.entry_price
-            signed_qty = position.amount if position.side == PositionSide.LONG else -position.amount
-            total += signed_qty * px
-            unrealized += signed_qty * (px - position.entry_price)
+            direction = 1.0 if position.side == PositionSide.LONG else -1.0
+            position_unrealized = float(position.amount) * direction * (px - float(position.entry_price))
+            unrealized += position_unrealized
+            total += position_unrealized
         if not np.isfinite(total):
             print(f"CRITICAL: Non-finite total equity calculated: {total}")
             total = self.cash.get(quote_asset, 0.0)
@@ -188,7 +189,8 @@ class PortfolioManager:
         total = self.cash.get(quote_asset, 0.0)
         for pos in self.positions:
             px = await exchange.current_price(pos.symbol)
-            total += pos.amount * px
+            direction = 1.0 if pos.side == PositionSide.LONG else -1.0
+            total += float(pos.amount) * direction * (float(px) - float(pos.entry_price))
         return total
 
 
