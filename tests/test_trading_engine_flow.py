@@ -8,10 +8,13 @@ from core.interfaces.notifier import Notifier
 from core.types.commands import PlaceOrderCommand
 from core.types.domain_types import Order, Position, Tick
 from core.types.enums import OrderSide, PositionSide
-from core.types.events import FillEvent, MarketEvent
+from core.types.events import ExitHeartbeatEvent, FillEvent, MarketEvent
 from core.types.notifications import SignalNotification, SystemNotification, TradeExitNotification
 from core.types.order_flags import ORDER_META_FILL_PRICE_FINAL
+from domain.execution.execution_service import ExecutionService
+from domain.execution.exit_manager import ExitManager
 from domain.portfolio.portfolio_manager import PortfolioManager
+from infrastructure.exchanges.simulation.simulated_exchange import SimulatedExchange
 
 
 class FakeDataProvider:
@@ -148,15 +151,17 @@ def make_engine(
     risk: FakeRisk | None = None,
     exit_manager=None,
     notifier: Notifier | None = None,
+    exchange=None,
+    execution=None,
 ) -> TradingEngine:
     return TradingEngine(
-        exchange=NoopExchange(),
+        exchange=exchange or NoopExchange(),
         data_provider=data or FakeDataProvider(),
         model=FakeModel(),
         strategy=FakeStrategy(),
         risk_manager=risk or FakeRisk(),
         portfolio=portfolio or PortfolioManager(cash={"USDT": 1000.0}),
-        execution=NoopExecution(),
+        execution=execution or NoopExecution(),
         exit_manager=exit_manager,
         barrier_policy=FakeBarrierPolicy(),
         notifier=notifier,
@@ -260,6 +265,79 @@ def test_exit_command_for_short_position_uses_buy_side() -> None:
     assert len(commands) == 1
     assert commands[0].order.side == OrderSide.BUY
     assert commands[0].order.amount == pytest.approx(2.0)
+
+
+def test_exit_heartbeat_checks_only_exits_without_entry_warmup() -> None:
+    data = FakeDataProvider()
+    exit_manager = FakeExitManager(price=102.0, reason="TP")
+    portfolio = PortfolioManager(
+        cash={"USDT": 1000.0},
+        positions=[
+            Position(
+                "BTC/USDT",
+                PositionSide.LONG,
+                amount=1.0,
+                entry_price=100.0,
+                meta={"barrier_stop_pct": 0.01, "barrier_take_pct": 0.02},
+            )
+        ],
+    )
+    engine = make_engine(portfolio=portfolio, data=data, exit_manager=exit_manager)
+
+    commands = asyncio.run(engine.process_event(ExitHeartbeatEvent(make_tick())))
+
+    assert data.warmup_calls == []
+    assert len(commands) == 1
+    command = commands[0]
+    assert command.reason == "TP"
+    assert command.continue_with_entry is False
+    assert command.source_tick is None
+    assert command.order.side == OrderSide.SELL
+    assert command.order.price == pytest.approx(102.0)
+
+
+def test_exit_heartbeat_executes_paper_exit_and_closes_position() -> None:
+    notifier = RecordingNotifier()
+    portfolio = PortfolioManager(
+        cash={"USDT": 1000.0},
+        positions=[
+            Position(
+                "BTC/USDT",
+                PositionSide.LONG,
+                amount=1.0,
+                entry_price=100.0,
+                meta={"barrier_stop_pct": 0.01, "barrier_take_pct": 0.02},
+            )
+        ],
+    )
+    tick = Tick(
+        symbol="BTC/USDT",
+        ts=pd.Timestamp("2024-01-01T00:01:00"),
+        bid=102.5,
+        ask=102.5,
+        price=102.5,
+        volume=1.0,
+        open=100.0,
+        high=102.5,
+        low=99.5,
+        close=102.5,
+    )
+    engine = make_engine(
+        portfolio=portfolio,
+        exchange=SimulatedExchange(commission=0.0, slippage=0.0),
+        execution=ExecutionService(),
+        exit_manager=ExitManager(slippage=0.0),
+        notifier=notifier,
+    )
+
+    commands = asyncio.run(engine.process_event(ExitHeartbeatEvent(tick)))
+    events = asyncio.run(engine.execute_commands(commands))
+
+    assert portfolio.get_position("BTC/USDT") is None
+    assert len(events) == 2
+    assert len(notifier.trade_exits) == 1
+    assert notifier.trade_exits[0].reason == "TP"
+    assert notifier.trade_exits[0].exit_price == pytest.approx(102.0)
 
 
 def test_exit_fill_with_continue_entry_closes_position_then_builds_new_entry_command() -> None:

@@ -11,7 +11,7 @@ from core.interfaces.data_provider import DataProvider
 from core.interfaces.model import Model
 from core.interfaces.notifier import Notifier
 from core.types.domain_types import Tick
-from core.types.events import MarketEvent
+from core.types.events import ExitHeartbeatEvent, MarketEvent
 
 logger = logging.getLogger(__name__)
 
@@ -33,10 +33,12 @@ class RealtimeOrchestrator:
         runtime: TradingRuntimeLoop | None = None,
         journal: EventJournal | None = None,
         notifier: Notifier | None = None,
+        exit_data_provider: DataProvider | None = None,
     ) -> None:
         self._notifier = notifier
         self._runtime = runtime or TradingRuntimeLoop(engine, journal=journal, notifier=notifier)
         self._data_provider = data_provider
+        self._exit_data_provider = exit_data_provider
         self._model = model
         self._symbols = symbols
         self._warmup_bars = warmup_bars if warmup_bars is not None else model.required_bars()
@@ -54,21 +56,33 @@ class RealtimeOrchestrator:
     async def _publish_tick(self, tick: Tick) -> None:
         await self._runtime.publish(MarketEvent(tick))
 
+    async def _publish_exit_heartbeat(self, tick: Tick) -> None:
+        await self._runtime.publish(ExitHeartbeatEvent(tick))
+
     async def run(self) -> None:
         await self.bootstrap()
         for symbol in self._symbols:
             self._data_provider.subscribe(symbol, self._publish_tick)
+            if self._exit_data_provider is not None:
+                self._exit_data_provider.subscribe(symbol, self._publish_exit_heartbeat)
 
         runtime_task = self._runtime.start()
         provider_task = asyncio.create_task(self._data_provider.run())
+        provider_tasks = {provider_task}
+        exit_provider_task = None
+        if self._exit_data_provider is not None:
+            exit_provider_task = asyncio.create_task(self._exit_data_provider.run())
+            provider_tasks.add(exit_provider_task)
         try:
             done, pending = await asyncio.wait(
-                {runtime_task, provider_task},
+                {runtime_task, *provider_tasks},
                 return_when=asyncio.FIRST_COMPLETED,
             )
             if provider_task in done:
                 provider_task.result()
                 await self._runtime.drain()
+            elif exit_provider_task is not None and exit_provider_task in done:
+                exit_provider_task.result()
             else:
                 runtime_task.result()
         except Exception as exc:
@@ -78,10 +92,11 @@ class RealtimeOrchestrator:
             raise
         finally:
             await self._runtime.stop()
-            if not provider_task.done():
-                provider_task.cancel()
-                with suppress(asyncio.CancelledError):
-                    await provider_task
+            for task in provider_tasks:
+                if not task.done():
+                    task.cancel()
+                    with suppress(asyncio.CancelledError):
+                        await task
             if not runtime_task.done():
                 with suppress(asyncio.CancelledError):
                     await runtime_task

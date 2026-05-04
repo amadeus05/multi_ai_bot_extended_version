@@ -90,6 +90,8 @@ class PaperSettings:
     trading: TradingSettings
     ws_url: str = "wss://stream.bybit.com/v5/public/linear"
     testnet: bool = True
+    exit_heartbeat_enabled: bool = True
+    exit_timeframe: str = "1m"
 
     @property
     def symbols(self) -> list[str]:

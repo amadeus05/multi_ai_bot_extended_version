@@ -23,6 +23,21 @@ class MarketEvent:
 
 
 @dataclass(frozen=True)
+class ExitHeartbeatEvent:
+    """Market-data heartbeat used only for SL/TP checks."""
+
+    tick: Tick
+
+    @property
+    def symbol(self) -> str:
+        return self.tick.symbol
+
+    @property
+    def ts(self) -> pd.Timestamp:
+        return self.tick.ts
+
+
+@dataclass(frozen=True)
 class OrderAcceptedEvent:
     ts: pd.Timestamp
     order_id: str
@@ -116,6 +131,7 @@ class TimerEvent:
 
 TradingEvent = Union[
     MarketEvent,
+    ExitHeartbeatEvent,
     OrderAcceptedEvent,
     OrderRejectedEvent,
     OrderCancelledEvent,

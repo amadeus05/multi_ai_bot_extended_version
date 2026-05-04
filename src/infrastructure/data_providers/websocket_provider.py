@@ -10,6 +10,7 @@ from core.config.base import BaseConfig
 from core.interfaces.data_provider import DataProvider
 from core.types.domain_types import Tick
 from domain.ml.features import MarketContextAssembler, MasterFeatureBuilder
+from infrastructure.data_providers.bybit_kline_ticks import tick_from_kline_event
 from infrastructure.exchanges.bybit.bybit_kline_stream import BybitKlineStream
 from infrastructure.exchanges.bybit.bybit_mapper import BybitMapper
 from infrastructure.exchanges.bybit.bybit_service import BybitService
@@ -240,14 +241,7 @@ class WebSocketProvider(DataProvider):
             start_ms = end_ms - self._service.get_timeframe_ms(self._timeframe) * 5
             self._sync_context(symbol, start_ms, end_ms)
             self._sync_htf(symbol, end_ms - self._service.get_timeframe_ms(self._htf_timeframe) * 2, end_ms)
-            tick = Tick(
-                symbol=symbol,
-                ts=pd.to_datetime(event.end_ms, unit="ms", utc=True).tz_convert(None),
-                bid=event.close_price,
-                ask=event.close_price,
-                price=event.close_price,
-                volume=event.volume,
-            )
+            tick = tick_from_kline_event(symbol, event)
             callbacks = list(self._subs.get(symbol, []))
             for callback in callbacks:
                 result = callback(tick)
