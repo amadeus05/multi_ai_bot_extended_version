@@ -6,6 +6,7 @@ from core.config.settings import TradingSettings
 from core.interfaces.data_provider import DataProvider
 from core.interfaces.exchange import Exchange
 from core.interfaces.model import Model
+from core.interfaces.notifier import Notifier
 from domain.execution.execution_service import ExecutionService
 from domain.execution.exit_manager import ExitManager
 from domain.ml.labeling.barrier_policy import BarrierPolicy
@@ -14,6 +15,7 @@ from domain.portfolio.portfolio_manager import PortfolioManager
 from domain.risk.adaptive_risk_manager import AdaptiveRiskManager
 from domain.risk.models.risk_profile import RiskProfile
 from domain.strategy import BacktestParitySignalStrategy
+from infrastructure.notifications import build_notifier
 from application.trading_engine import TradingEngine
 
 
@@ -46,10 +48,12 @@ def build_trading_engine(
     model: Model,
     portfolio: PortfolioManager | None = None,
     execution_listener=None,
+    notifier: Notifier | None = None,
 ) -> TradingEngine:
     labeling_cfg = build_labeling_config(settings)
     barrier_policy = BarrierPolicy(labeling_cfg)
     portfolio = portfolio or PortfolioManager(cash={"USDT": float(settings.initial_capital)})
+    notifier = notifier or build_notifier(settings.notifications)
     return TradingEngine(
         exchange=exchange,
         data_provider=data_provider,
@@ -63,4 +67,5 @@ def build_trading_engine(
         exit_manager=ExitManager(slippage=barrier_policy.slippage),
         execution_listener=execution_listener,
         barrier_policy=barrier_policy,
+        notifier=notifier,
     )

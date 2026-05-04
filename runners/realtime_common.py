@@ -6,6 +6,7 @@ from core.config.loader import load_storage_settings
 from core.interfaces.model import Model
 from core.interfaces.exchange import Exchange
 from infrastructure.data_providers.websocket_provider import WebSocketProvider
+from infrastructure.notifications import build_notifier
 from infrastructure.storage.storage_factory import build_event_journal
 
 
@@ -21,11 +22,13 @@ def build_realtime_orchestrator(
         timeframe=trading.timeframe,
         htf_timeframe=trading.htf_timeframe,
     )
+    notifier = build_notifier(trading.notifications)
     engine = build_trading_engine(
         settings=trading,
         exchange=exchange,
         data_provider=data_provider,
         model=model,
+        notifier=notifier,
     )
     journal = build_event_journal(load_storage_settings())
     return RealtimeOrchestrator(
@@ -35,4 +38,5 @@ def build_realtime_orchestrator(
         symbols=list(trading.symbols),
         warmup_bars=max(200, model.required_bars()),
         journal=journal,
+        notifier=notifier,
     )

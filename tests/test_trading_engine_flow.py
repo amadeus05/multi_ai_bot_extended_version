@@ -4,10 +4,12 @@ import pandas as pd
 import pytest
 
 from application.trading_engine import ENGINE_META_EXIT_REASON, TradingEngine
+from core.interfaces.notifier import Notifier
 from core.types.commands import PlaceOrderCommand
 from core.types.domain_types import Order, Position, Tick
 from core.types.enums import OrderSide, PositionSide
 from core.types.events import FillEvent, MarketEvent
+from core.types.notifications import SignalNotification, SystemNotification, TradeExitNotification
 from core.types.order_flags import ORDER_META_FILL_PRICE_FINAL
 from domain.portfolio.portfolio_manager import PortfolioManager
 
@@ -105,6 +107,26 @@ class NoopExecution:
     pass
 
 
+class RecordingNotifier(Notifier):
+    def __init__(self) -> None:
+        self.signals: list[SignalNotification] = []
+        self.trade_exits: list[TradeExitNotification] = []
+        self.systems: list[SystemNotification] = []
+        self.errors: list[tuple[str, Exception, Order | None]] = []
+
+    async def notify_signal(self, notification: SignalNotification) -> None:
+        self.signals.append(notification)
+
+    async def notify_trade_exit(self, notification: TradeExitNotification) -> None:
+        self.trade_exits.append(notification)
+
+    async def notify_system(self, notification: SystemNotification) -> None:
+        self.systems.append(notification)
+
+    async def notify_error(self, where: str, error: Exception, order: Order | None = None) -> None:
+        self.errors.append((where, error, order))
+
+
 def make_tick(symbol: str = "BTC/USDT") -> Tick:
     return Tick(
         symbol=symbol,
@@ -125,6 +147,7 @@ def make_engine(
     data: FakeDataProvider | None = None,
     risk: FakeRisk | None = None,
     exit_manager=None,
+    notifier: Notifier | None = None,
 ) -> TradingEngine:
     return TradingEngine(
         exchange=NoopExchange(),
@@ -136,6 +159,7 @@ def make_engine(
         execution=NoopExecution(),
         exit_manager=exit_manager,
         barrier_policy=FakeBarrierPolicy(),
+        notifier=notifier,
     )
 
 
@@ -160,6 +184,27 @@ def test_market_event_without_position_builds_entry_command_with_prediction_meta
     assert command.order.meta["signal_gap"] == pytest.approx(0.44)
     assert command.order.meta["direction_prob"] == pytest.approx(0.72)
     assert risk.checked_orders == [command.order]
+
+
+def test_valid_entry_signal_is_notified_after_risk_check() -> None:
+    notifier = RecordingNotifier()
+    engine = make_engine(notifier=notifier)
+
+    commands = asyncio.run(engine.process_event(MarketEvent(make_tick())))
+
+    assert len(commands) == 1
+    assert len(notifier.signals) == 1
+    signal = notifier.signals[0]
+    assert signal.signal_id == 1
+    assert signal.symbol == "BTC/USDT"
+    assert signal.side == "LONG"
+    assert signal.entry_price == pytest.approx(100.0)
+    assert signal.amount == pytest.approx(2.0)
+    assert signal.stop_price == pytest.approx(99.0)
+    assert signal.take_price == pytest.approx(102.0)
+    assert signal.p_long == pytest.approx(0.72)
+    assert signal.p_short == pytest.approx(0.28)
+    assert commands[0].order.meta["signal_number"] == 1
 
 
 def test_exit_check_runs_before_entry_and_returns_close_command_for_long_position() -> None:
@@ -257,3 +302,48 @@ def test_exit_fill_with_continue_entry_closes_position_then_builds_new_entry_com
     assert len(commands) == 1
     assert commands[0].reason == "ENTRY"
     assert commands[0].order.side == OrderSide.BUY
+
+
+def test_exit_fill_notifies_closed_trade_with_pnl_and_balance() -> None:
+    notifier = RecordingNotifier()
+    portfolio = PortfolioManager(
+        cash={"USDT": 1000.0},
+        positions=[
+            Position(
+                "BTC/USDT",
+                PositionSide.LONG,
+                amount=1.0,
+                entry_price=100.0,
+                meta={"barrier_stop_pct": 0.01, "barrier_take_pct": 0.02},
+            )
+        ],
+    )
+    engine = make_engine(portfolio=portfolio, notifier=notifier)
+    fill = FillEvent(
+        ts=pd.Timestamp("2024-01-01T01:00:00"),
+        order_id="exit-1",
+        client_order_id="client-exit-1",
+        symbol="BTC/USDT",
+        side=OrderSide.SELL,
+        amount=1.0,
+        price=95.0,
+        fee=0.0,
+        meta={ENGINE_META_EXIT_REASON: "SL"},
+        command_reason="SL",
+        event_id="exit-fill-1",
+    )
+
+    commands = asyncio.run(engine.process_event(fill))
+
+    assert commands == []
+    assert len(notifier.trade_exits) == 1
+    notification = notifier.trade_exits[0]
+    assert notification.trade_number == 0
+    assert notification.symbol == "BTC/USDT"
+    assert notification.side == "LONG"
+    assert notification.reason == "SL"
+    assert notification.entry_price == pytest.approx(100.0)
+    assert notification.exit_price == pytest.approx(95.0)
+    assert notification.pnl_abs == pytest.approx(-5.0)
+    assert notification.pnl_pct == pytest.approx(-0.05)
+    assert notification.balance == pytest.approx(995.0)

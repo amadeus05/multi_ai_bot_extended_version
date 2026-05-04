@@ -25,6 +25,7 @@ from core.config.train_config import TrainConfig
 from core.types.events import MarketEvent
 from domain.portfolio.portfolio_manager import PortfolioManager
 from infrastructure.data_providers.historical_replay_provider import HistoricalReplayProvider
+from infrastructure.notifications import build_notifier
 from infrastructure.exchanges.simulation.simulated_exchange import SimulatedExchange
 from infrastructure.storage.storage_factory import build_event_journal
 
@@ -128,6 +129,7 @@ async def main() -> None:
         portfolio=portfolio,
         charts_dir=backtest_settings.charts_dir,
     )
+    notifier = build_notifier(trading.notifications)
     engine = build_trading_engine(
         settings=trading,
         exchange=exchange,
@@ -135,8 +137,9 @@ async def main() -> None:
         model=wf_model,
         portfolio=portfolio,
         execution_listener=reporter.on_execution,
+        notifier=notifier,
     )
-    runtime = TradingRuntimeLoop(engine, journal=build_event_journal(load_storage_settings()))
+    runtime = TradingRuntimeLoop(engine, journal=build_event_journal(load_storage_settings()), notifier=notifier)
 
     print(
         f"TradingEngine Walk-forward OOS backtest | {symbol} | rows={len(frame)} | "

@@ -80,7 +80,16 @@ class PortfolioManager:
                 "balance": float(self.cash.get("USDT", 0.0)),
             }
             if getattr(trade, "meta", None):
-                for k in ("p_long", "p_short", "score", "signal_gap", "direction_prob"):
+                for k in (
+                    "signal_number",
+                    "p_long",
+                    "p_short",
+                    "score",
+                    "signal_gap",
+                    "direction_prob",
+                    "directional_proba_threshold",
+                    "min_signal_gap",
+                ):
                     if k in trade.meta:
                         open_ev[k] = trade.meta[k]
             self.trade_events.append(open_ev)

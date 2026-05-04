@@ -46,6 +46,8 @@ class BacktestParitySignalStrategy(Strategy):
         
         # Add score
         meta["score"] = float(prediction.get("score", max(p_long, p_short)))
+        meta["directional_proba_threshold"] = self._directional_proba_threshold
+        meta["min_signal_gap"] = self._min_signal_gap
 
         if signal == 1:
             if not self._allow_longs:

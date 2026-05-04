@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+from contextlib import suppress
 
 from application.event_journal import EventJournal
 from application.trading_engine import TradingEngine
+from core.interfaces.notifier import Notifier
 from core.types.commands import TradingCommand
 from core.types.events import TradingEvent
 
@@ -11,10 +13,17 @@ from core.types.events import TradingEvent
 class TradingRuntimeLoop:
     """Sequential event loop around TradingEngine."""
 
-    def __init__(self, engine: TradingEngine, *, journal: EventJournal | None = None) -> None:
+    def __init__(
+        self,
+        engine: TradingEngine,
+        *,
+        journal: EventJournal | None = None,
+        notifier: Notifier | None = None,
+    ) -> None:
         self._engine = engine
         self._journal = journal
         self._engine.set_event_journal(journal)
+        self._notifier = notifier
         self._queue: asyncio.Queue[TradingEvent | None] = asyncio.Queue()
         self._running = False
 
@@ -44,6 +53,12 @@ class TradingRuntimeLoop:
                 if event is None:
                     self._running = False
                     continue
-                await self.process_once(event)
+                try:
+                    await self.process_once(event)
+                except Exception as exc:
+                    if self._notifier is not None:
+                        with suppress(Exception):
+                            await self._notifier.notify_error("TradingRuntimeLoop.run_forever", exc)
+                    raise
             finally:
                 self._queue.task_done()

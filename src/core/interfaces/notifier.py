@@ -1,15 +1,20 @@
 from abc import ABC, abstractmethod
 
-from core.types.domain_types import Order, Trade
+from core.types.domain_types import Order
+from core.types.notifications import SignalNotification, SystemNotification, TradeExitNotification
 
 
 class Notifier(ABC):
     @abstractmethod
-    async def alert(self, message: str) -> None:
+    async def notify_signal(self, notification: SignalNotification) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    async def log_trade(self, trade: Trade) -> None:
+    async def notify_trade_exit(self, notification: TradeExitNotification) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def notify_system(self, notification: SystemNotification) -> None:
         raise NotImplementedError
 
     @abstractmethod

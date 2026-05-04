@@ -1,11 +1,15 @@
 import inspect
+import logging
 
 from application.event_journal import EventJournal
 from application.execution_event_deduplicator import ExecutionEventDeduplicator
 from core.interfaces.data_provider import DataProvider
 from core.interfaces.exchange import Exchange
 from core.interfaces.model import Model
+from core.interfaces.notifier import Notifier
 from core.types.commands import CancelOrderCommand, PlaceOrderCommand, TradingCommand
+from core.types.domain_types import Order
+from core.types.enums import OrderSide
 from core.types.events import (
     FillEvent,
     MarketEvent,
@@ -14,6 +18,7 @@ from core.types.events import (
     OrderRejectedEvent,
     TradingEvent,
 )
+from core.types.notifications import SignalNotification, TradeExitNotification
 from core.types.order_flags import ORDER_META_FILL_PRICE_FINAL
 from domain.execution.execution_service import ExecutionService
 from domain.portfolio.portfolio_manager import PortfolioManager
@@ -25,6 +30,14 @@ from domain.strategy.strategy_engine import Strategy
 
 ENGINE_META_EXIT_REASON = "_engine_exit_reason"
 ENGINE_META_REASON_SUFFIX = "_engine_reason_suffix"
+
+logger = logging.getLogger(__name__)
+
+
+def _optional_float(value) -> float | None:
+    if value is None:
+        return None
+    return float(value)
 
 
 class TradingEngine:
@@ -40,6 +53,7 @@ class TradingEngine:
         exit_manager=None,
         execution_listener=None,
         barrier_policy: BarrierPolicy | None = None,
+        notifier: Notifier | None = None,
     ) -> None:
         self.exit_manager = exit_manager
         self._barrier_policy = barrier_policy or BarrierPolicy(LabelingConfig.from_env())
@@ -56,6 +70,8 @@ class TradingEngine:
         self._execution_listener = execution_listener
         self._execution_dedupe = ExecutionEventDeduplicator()
         self._event_journal: EventJournal | None = None
+        self._notifier = notifier
+        self._signal_seq = 0
 
     def set_execution_listener(self, listener) -> None:
         self._execution_listener = listener
@@ -85,6 +101,22 @@ class TradingEngine:
         if inspect.isawaitable(maybe_coro):
             await maybe_coro
 
+    async def _notify_signal(self, notification: SignalNotification) -> None:
+        if self._notifier is None:
+            return
+        try:
+            await self._notifier.notify_signal(notification)
+        except Exception:
+            logger.exception("Signal notification failed")
+
+    async def _notify_trade_exit(self, notification: TradeExitNotification) -> None:
+        if self._notifier is None:
+            return
+        try:
+            await self._notifier.notify_trade_exit(notification)
+        except Exception:
+            logger.exception("Trade exit notification failed")
+
     def _fill_meta_reason(self, fill: FillEvent) -> tuple[str | None, str | None]:
         meta = fill.meta or {}
         reason = meta.get(ENGINE_META_EXIT_REASON) or meta.get("reason")
@@ -111,7 +143,65 @@ class TradingEngine:
                 if reason_suffix:
                     portfolio.trade_events[-1]["reason_suffix"] = reason_suffix
 
+        for res in portfolio.closed_trade_results[prev_closed:]:
+            await self._notify_trade_exit(self._trade_exit_notification(res, portfolio))
+
         await self._notify_execution(trade, portfolio)
+
+    @staticmethod
+    def _order_position_side(order: Order) -> str:
+        return "LONG" if order.side == OrderSide.BUY else "SHORT"
+
+    @staticmethod
+    def _barrier_price(entry_price: float, side: str, pct: float | None, *, is_take: bool) -> float | None:
+        if pct is None:
+            return None
+        direction = 1.0 if side == "LONG" else -1.0
+        sign = direction if is_take else -direction
+        return float(entry_price) * (1.0 + sign * float(pct))
+
+    def _signal_notification(self, *, tick, order: Order, portfolio: PortfolioManager) -> SignalNotification:
+        meta = order.meta or {}
+        side = self._order_position_side(order)
+        entry_price = float(order.price if order.price is not None else tick.price)
+        stop_pct = _optional_float(meta.get("barrier_stop_pct"))
+        take_pct = _optional_float(meta.get("barrier_take_pct"))
+        return SignalNotification(
+            signal_id=int(meta.get("signal_number", self._signal_seq)),
+            symbol=order.symbol,
+            side=side,
+            ts=getattr(tick, "ts", None),
+            entry_price=entry_price,
+            amount=float(order.amount),
+            stop_price=self._barrier_price(entry_price, side, stop_pct, is_take=False),
+            take_price=self._barrier_price(entry_price, side, take_pct, is_take=True),
+            stop_pct=stop_pct,
+            take_pct=take_pct,
+            p_long=float(meta.get("p_long", 0.0)),
+            p_short=float(meta.get("p_short", 0.0)),
+            signal_gap=float(meta.get("signal_gap", 0.0)),
+            direction_prob=float(meta.get("direction_prob", 0.0)),
+            proba_threshold=float(meta.get("directional_proba_threshold", 0.0)),
+            min_signal_gap=float(meta.get("min_signal_gap", 0.0)),
+            balance=float(portfolio.cash.get("USDT", 0.0)),
+        )
+
+    @staticmethod
+    def _trade_exit_notification(res: dict, portfolio: PortfolioManager) -> TradeExitNotification:
+        return TradeExitNotification(
+            trade_number=int(res.get("trade_number", 0)),
+            symbol=str(res.get("symbol", "")),
+            side=str(res.get("side", "")).upper(),
+            reason=str(res.get("reason", "CLOSE")),
+            ts=res.get("ts"),
+            entry_price=float(res.get("entry_price", 0.0)),
+            exit_price=float(res.get("exit_price", 0.0)),
+            qty=float(res.get("qty", 0.0)),
+            pnl_abs=float(res.get("pnl_abs", 0.0)),
+            pnl_pct=float(res.get("pnl_pct", 0.0)),
+            commission=float(res.get("commission", 0.0)),
+            balance=float(portfolio.cash.get("USDT", 0.0)),
+        )
 
     async def _commands_for_exit_tick(
         self,
@@ -188,6 +278,10 @@ class TradingEngine:
         safe_order = risk.check(raw_order, portfolio, exchange)
         if safe_order is None:
             return []
+        self._signal_seq += 1
+        safe_order.meta = safe_order.meta or {}
+        safe_order.meta["signal_number"] = self._signal_seq
+        await self._notify_signal(self._signal_notification(tick=tick, order=safe_order, portfolio=portfolio))
         return [PlaceOrderCommand(safe_order, reason="ENTRY", ts=getattr(tick, "ts", None), source_tick=tick)]
 
     async def _commands_for_market_event(self, event: MarketEvent) -> list[TradingCommand]:

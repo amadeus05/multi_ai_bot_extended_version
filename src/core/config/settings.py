@@ -30,6 +30,13 @@ class ExecutionCostSettings:
 
 
 @dataclass(frozen=True)
+class NotificationSettings:
+    channels: tuple[str, ...] = ("silent",)
+    telegram_bot_token: str = ""
+    telegram_chat_id: str = ""
+
+
+@dataclass(frozen=True)
 class TradingSettings:
     symbols: tuple[str, ...] = ("BTC/USDT",)
     model_path: str = "models/latest.pkl"
@@ -40,6 +47,7 @@ class TradingSettings:
     signal: SignalSettings = field(default_factory=SignalSettings)
     risk: RiskSettings = field(default_factory=RiskSettings)
     costs: ExecutionCostSettings = field(default_factory=ExecutionCostSettings)
+    notifications: NotificationSettings = field(default_factory=NotificationSettings)
 
 
 @dataclass(frozen=True)

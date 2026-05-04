@@ -9,6 +9,7 @@ from core.config.settings import (
     BacktestSettings,
     ExecutionCostSettings,
     LiveSettings,
+    NotificationSettings,
     PaperSettings,
     RiskSettings,
     SignalSettings,
@@ -38,6 +39,11 @@ def _bool(raw: str) -> bool:
 def _symbols(raw: str) -> tuple[str, ...]:
     values = tuple(item.strip() for item in raw.split(",") if item.strip())
     return values or ("BTC/USDT",)
+
+
+def _csv(raw: str, default: tuple[str, ...]) -> tuple[str, ...]:
+    values = tuple(item.strip() for item in raw.split(",") if item.strip())
+    return values or default
 
 
 def _apply_overrides(settings: Any, overrides: dict[str, Any] | None) -> Any:
@@ -119,6 +125,11 @@ def load_trading_settings(
         costs=ExecutionCostSettings(
             taker_com=float(_env(("EXEC_TAKER_COM", "TAKER_COM"), "0.0004")),
             slippage=float(_env(("EXEC_SLIPPAGE", "SLIPPAGE"), "0.0003")),
+        ),
+        notifications=NotificationSettings(
+            channels=_csv(_env("NOTIFIER_CHANNELS", "silent"), ("silent",)),
+            telegram_bot_token=_env("TELEGRAM_BOT_TOKEN", ""),
+            telegram_chat_id=_env("TELEGRAM_CHAT_ID", ""),
         ),
     )
     return _apply_overrides(settings, overrides)

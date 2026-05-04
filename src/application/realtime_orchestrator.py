@@ -9,6 +9,7 @@ from application.trading_engine import TradingEngine
 from application.trading_runtime_loop import TradingRuntimeLoop
 from core.interfaces.data_provider import DataProvider
 from core.interfaces.model import Model
+from core.interfaces.notifier import Notifier
 from core.types.domain_types import Tick
 from core.types.events import MarketEvent
 
@@ -31,8 +32,10 @@ class RealtimeOrchestrator:
         warmup_bars: int | None = None,
         runtime: TradingRuntimeLoop | None = None,
         journal: EventJournal | None = None,
+        notifier: Notifier | None = None,
     ) -> None:
-        self._runtime = runtime or TradingRuntimeLoop(engine, journal=journal)
+        self._notifier = notifier
+        self._runtime = runtime or TradingRuntimeLoop(engine, journal=journal, notifier=notifier)
         self._data_provider = data_provider
         self._model = model
         self._symbols = symbols
@@ -68,6 +71,11 @@ class RealtimeOrchestrator:
                 await self._runtime.drain()
             else:
                 runtime_task.result()
+        except Exception as exc:
+            if self._notifier is not None and provider_task.done() and not runtime_task.done():
+                with suppress(Exception):
+                    await self._notifier.notify_error("RealtimeOrchestrator.run", exc)
+            raise
         finally:
             await self._runtime.stop()
             if not provider_task.done():
