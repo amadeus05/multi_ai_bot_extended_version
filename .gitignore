@@ -22,6 +22,7 @@ build/
 
 # Тестирование и покрытие
 .pytest_cache/
+pytest-cache-files-*/
 .mypy_cache/
 .ruff_cache/
 .coverage
@@ -61,4 +62,3 @@ Desktop.ini
 /backtest_charts/*.*
 /models/walk_forward_oos_predictions_summary.json
 /models/walk_forward_oos_predictions.csv
-
