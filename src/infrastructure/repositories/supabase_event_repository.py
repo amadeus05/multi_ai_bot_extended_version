@@ -12,8 +12,7 @@ from infrastructure.storage.supabase_connection import SupabaseConnection
 
 class SupabaseEventRepository:
     def __init__(self, connection: SupabaseConnection, *, table: str = "trading_events") -> None:
-        if not connection.url or not connection.service_key:
-            raise ValueError("Supabase storage requires SUPABASE_URL and SUPABASE_SERVICE_KEY.")
+        connection.validate_service_key()
         self._connection = connection
         self._table = table
 

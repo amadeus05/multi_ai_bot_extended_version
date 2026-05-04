@@ -14,7 +14,7 @@ class ExecutionService:
         if isinstance(command, Order):
             command = PlaceOrderCommand(command)
         if isinstance(command, PlaceOrderCommand):
-            self._ensure_client_order_id(command.order)
+            self.ensure_client_order_id(command.order)
             if isinstance(exchange, ExecutionLifecycleExchange):
                 return await exchange.submit_order_lifecycle(command)
             return await self._place_order_legacy(command, exchange)
@@ -25,7 +25,7 @@ class ExecutionService:
         return []
 
     @staticmethod
-    def _ensure_client_order_id(order: Order) -> None:
+    def ensure_client_order_id(order: Order) -> None:
         if order.client_order_id is None:
             order.client_order_id = str(uuid.uuid4())
 

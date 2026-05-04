@@ -51,6 +51,9 @@ models/backups/
 
 # Данные (сырые датасеты обычно не коммитят)
 data/raw/
+data/trading_runtime.sqlite
+data/trading_runtime.sqlite-shm
+data/trading_runtime.sqlite-wal
 
 # ОС
 Thumbs.db
