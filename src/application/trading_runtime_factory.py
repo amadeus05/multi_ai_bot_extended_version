@@ -47,11 +47,13 @@ def build_trading_engine(
     data_provider: DataProvider,
     model: Model,
     portfolio: PortfolioManager | None = None,
+    execution: ExecutionService | None = None,
     notifier: Notifier | None = None,
 ) -> TradingEngine:
     labeling_cfg = build_labeling_config(settings)
     barrier_policy = BarrierPolicy(labeling_cfg)
     portfolio = portfolio or PortfolioManager(cash={"USDT": float(settings.initial_capital)})
+    execution = execution or ExecutionService()
     notifier = notifier or build_notifier(settings.notifications)
     return TradingEngine(
         exchange=exchange,
@@ -62,7 +64,7 @@ def build_trading_engine(
             profile=RiskProfile.from_settings(settings.risk, leverage=settings.leverage)
         ),
         portfolio=portfolio,
-        execution=ExecutionService(),
+        execution=execution,
         exit_manager=ExitManager(slippage=barrier_policy.slippage),
         barrier_policy=barrier_policy,
         notifier=notifier,
