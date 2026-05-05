@@ -152,7 +152,6 @@ def load_paper_settings(overrides: dict[str, Any] | None = None) -> PaperSetting
     settings = PaperSettings(
         trading=load_trading_settings(mode="paper"),
         ws_url=_env("WS_URL", "wss://stream.bybit.com/v5/public/linear"),
-        testnet=True,
     )
     return _apply_overrides(settings, overrides)
 

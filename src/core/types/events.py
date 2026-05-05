@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Union
 
 import pandas as pd
@@ -107,32 +107,10 @@ class FillEvent:
         )
 
 
-@dataclass(frozen=True)
-class TimerEvent:
-    ts: pd.Timestamp
-    name: str
-    payload: dict[str, Any] = field(default_factory=dict)
-
-
 TradingEvent = Union[
     MarketEvent,
     OrderAcceptedEvent,
     OrderRejectedEvent,
     OrderCancelledEvent,
     FillEvent,
-    TimerEvent,
 ]
-
-# Backward-compatible names for older code/imports.
-TickEvent = MarketEvent
-
-
-@dataclass(frozen=True)
-class SignalEvent:
-    order: Order
-
-
-@dataclass(frozen=True)
-class OrderFilledEvent:
-    trade: Trade
-    ts: pd.Timestamp

@@ -89,7 +89,6 @@ class BacktestSettings:
 class PaperSettings:
     trading: TradingSettings
     ws_url: str = "wss://stream.bybit.com/v5/public/linear"
-    testnet: bool = True
 
     @property
     def symbols(self) -> list[str]:
