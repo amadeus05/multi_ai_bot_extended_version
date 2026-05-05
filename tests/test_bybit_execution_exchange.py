@@ -5,9 +5,10 @@ import pytest
 
 from core.types.commands import CancelOrderCommand, PlaceOrderCommand
 from core.types.domain_types import Order
-from core.types.enums import OrderSide, OrderStatus
+from core.types.enums import OrderSide, OrderStatus, OrderType
 from core.types.events import FillEvent, OrderAcceptedEvent, OrderCancelledEvent, OrderRejectedEvent
 from infrastructure.exchanges.bybit.bybit_execution_exchange import BybitExecutionExchange
+from infrastructure.exchanges.bybit.bybit_instrument_filters import BybitInstrumentFilter, BybitInstrumentFilterCache
 from infrastructure.exchanges.bybit.bybit_rest_client import BybitRestError
 
 
@@ -31,7 +32,26 @@ class FakeBybitClient:
 
 
 def make_exchange(client: FakeBybitClient) -> BybitExecutionExchange:
-    return BybitExecutionExchange("key", "secret", testnet=True, client=client)
+    filters = BybitInstrumentFilterCache(client, category="linear")
+    filters.set_filter(
+        BybitInstrumentFilter.from_instrument(
+            {
+                "symbol": "BTCUSDT",
+                "priceFilter": {"tickSize": "0.5"},
+                "lotSizeFilter": {"minOrderQty": "0.001", "qtyStep": "0.001", "minNotionalValue": "5"},
+            }
+        )
+    )
+    filters.set_filter(
+        BybitInstrumentFilter.from_instrument(
+            {
+                "symbol": "ETHUSDT",
+                "priceFilter": {"tickSize": "0.01"},
+                "lotSizeFilter": {"minOrderQty": "0.01", "qtyStep": "0.01", "minNotionalValue": "5"},
+            }
+        )
+    )
+    return BybitExecutionExchange("key", "secret", testnet=True, client=client, instrument_filters=filters)
 
 
 def test_submit_order_lifecycle_returns_accepted_only_from_create_ack() -> None:
@@ -50,6 +70,38 @@ def test_submit_order_lifecycle_returns_accepted_only_from_create_ack() -> None:
     assert order.id == "bybit-order-1"
     assert client.posts[0][0] == "/v5/order/create"
     assert client.posts[0][1]["orderLinkId"] == "client-1"
+
+
+def test_submit_order_lifecycle_rounds_order_before_rest_submit() -> None:
+    client = FakeBybitClient()
+    exchange = make_exchange(client)
+    order = Order(
+        "BTC/USDT",
+        OrderSide.BUY,
+        amount=0.123456,
+        price=25000.21,
+        type=OrderType.LIMIT,
+        client_order_id="client-1",
+    )
+
+    events = asyncio.run(exchange.submit_order_lifecycle(PlaceOrderCommand(order, reason="ENTRY")))
+
+    assert isinstance(events[0], OrderAcceptedEvent)
+    assert client.posts[0][1]["qty"] == "0.123"
+    assert client.posts[0][1]["price"] == "25000.5"
+
+
+def test_submit_order_lifecycle_rejects_filter_failure_before_rest_submit() -> None:
+    client = FakeBybitClient()
+    exchange = make_exchange(client)
+    order = Order("BTC/USDT", OrderSide.BUY, amount=0.0009, price=25000.0, client_order_id="client-1")
+
+    events = asyncio.run(exchange.submit_order_lifecycle(PlaceOrderCommand(order, reason="ENTRY")))
+
+    assert len(events) == 1
+    assert isinstance(events[0], OrderRejectedEvent)
+    assert "below minOrderQty" in events[0].reason
+    assert client.posts == []
 
 
 def test_submit_order_lifecycle_maps_bybit_rejection_to_rejected_event() -> None:

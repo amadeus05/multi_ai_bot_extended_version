@@ -6,6 +6,10 @@ from core.types.domain_types import Order, Position
 from core.types.events import TradingEvent
 from core.types.execution_event_factory import ExecutionEventFactory
 from infrastructure.exchanges.bybit.bybit_execution_mapper import BybitExecutionMapper
+from infrastructure.exchanges.bybit.bybit_instrument_filters import (
+    BybitInstrumentFilterCache,
+    BybitInstrumentFilterError,
+)
 from infrastructure.exchanges.bybit.bybit_rest_client import BybitRestClient, BybitRestError
 
 
@@ -21,12 +25,14 @@ class BybitExecutionExchange(Exchange):
         category: str = "linear",
         client: BybitRestClient | None = None,
         mapper: BybitExecutionMapper | None = None,
+        instrument_filters: BybitInstrumentFilterCache | None = None,
     ) -> None:
         self._api_key = api_key
         self._secret = secret
         self._testnet = bool(testnet)
         self.client = client or BybitRestClient(api_key, secret, testnet=testnet)
         self.mapper = mapper or BybitExecutionMapper(category=category)
+        self.instrument_filters = instrument_filters or BybitInstrumentFilterCache(self.client, category=category)
 
     async def place_order(self, order: Order) -> str:
         events = await self.submit_order_lifecycle(PlaceOrderCommand(order))
@@ -39,9 +45,10 @@ class BybitExecutionExchange(Exchange):
     async def submit_order_lifecycle(self, command: PlaceOrderCommand) -> list[TradingEvent]:
         order = command.order
         try:
+            self.instrument_filters.normalize_order(order)
             payload = self.mapper.to_create_order_payload(command)
             response = self.client.post("/v5/order/create", payload, request_name="order_create")
-        except (BybitRestError, ValueError) as exc:
+        except (BybitInstrumentFilterError, BybitRestError, ValueError) as exc:
             return [ExecutionEventFactory.rejected(ExecutionEventFactory.event_ts(command.ts), order, str(exc))]
 
         result = response.get("result") or {}
