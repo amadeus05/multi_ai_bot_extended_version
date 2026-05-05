@@ -50,9 +50,9 @@ class BacktestReplayReporter:
         sign = "+" if value >= 0 else "-"
         return f"{sign}{abs(value):.2f}%"
 
-    def on_execution(self, _trade, portfolio) -> None:
-        events = portfolio.trade_events[self._seen_trade_events :]
-        self._seen_trade_events = len(portfolio.trade_events)
+    def flush_trade_events(self) -> None:
+        events = self.portfolio.trade_events[self._seen_trade_events :]
+        self._seen_trade_events = len(self.portfolio.trade_events)
         for event in events:
             if event.get("type") == "OPEN":
                 self._print_open(event)

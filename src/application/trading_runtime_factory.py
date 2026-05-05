@@ -47,7 +47,6 @@ def build_trading_engine(
     data_provider: DataProvider,
     model: Model,
     portfolio: PortfolioManager | None = None,
-    execution_listener=None,
     notifier: Notifier | None = None,
 ) -> TradingEngine:
     labeling_cfg = build_labeling_config(settings)
@@ -65,7 +64,6 @@ def build_trading_engine(
         portfolio=portfolio,
         execution=ExecutionService(),
         exit_manager=ExitManager(slippage=barrier_policy.slippage),
-        execution_listener=execution_listener,
         barrier_policy=barrier_policy,
         notifier=notifier,
     )

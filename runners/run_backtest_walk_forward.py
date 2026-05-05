@@ -135,7 +135,6 @@ async def main() -> None:
         data_provider=data_provider,
         model=wf_model,
         portfolio=portfolio,
-        execution_listener=reporter.on_execution,
         notifier=notifier,
     )
     runtime = TradingRuntimeLoop(engine, journal=None, notifier=notifier)
@@ -150,6 +149,7 @@ async def main() -> None:
 
     for tick in data_provider.iter_replay_ticks():
         await runtime.process_once(MarketEvent(tick))
+        reporter.flush_trade_events()
         mark = float(tick.close if tick.close is not None else tick.price)
         reporter.record_equity(tick.ts, {symbol: mark})
 
@@ -157,6 +157,7 @@ async def main() -> None:
     final_close = data_provider.last_close
     if final_ts is not None and final_close is not None:
         await engine.close_all_at_market({symbol: float(final_close)}, final_ts)
+        reporter.flush_trade_events()
         reporter.record_equity(final_ts, {symbol: float(final_close)})
 
     snap = portfolio.get_state_snapshot()

@@ -1,4 +1,3 @@
-import inspect
 import logging
 
 from application.event_journal import EventJournal
@@ -51,7 +50,6 @@ class TradingEngine:
         portfolio: PortfolioManager,
         execution: ExecutionService,
         exit_manager=None,
-        execution_listener=None,
         barrier_policy: BarrierPolicy | None = None,
         notifier: Notifier | None = None,
     ) -> None:
@@ -67,14 +65,10 @@ class TradingEngine:
             "execution": execution,
         }
         self._running = False
-        self._execution_listener = execution_listener
         self._execution_dedupe = ExecutionEventDeduplicator()
         self._event_journal: EventJournal | None = None
         self._notifier = notifier
         self._signal_seq = 0
-
-    def set_execution_listener(self, listener) -> None:
-        self._execution_listener = listener
 
     def set_event_journal(self, journal: EventJournal | None) -> None:
         self._event_journal = journal
@@ -93,13 +87,6 @@ class TradingEngine:
             exchange.set_last_price(float(tick.price))
         if hasattr(risk, "set_current_bar"):
             risk.set_current_bar(getattr(tick, "ts", None))
-
-    async def _notify_execution(self, trade, portfolio) -> None:
-        if self._execution_listener is None:
-            return
-        maybe_coro = self._execution_listener(trade, portfolio)
-        if inspect.isawaitable(maybe_coro):
-            await maybe_coro
 
     async def _notify_signal(self, notification: SignalNotification) -> None:
         if self._notifier is None:
@@ -145,8 +132,6 @@ class TradingEngine:
 
         for res in portfolio.closed_trade_results[prev_closed:]:
             await self._notify_trade_exit(self._trade_exit_notification(res, portfolio))
-
-        await self._notify_execution(trade, portfolio)
 
     @staticmethod
     def _order_position_side(order: Order) -> str:

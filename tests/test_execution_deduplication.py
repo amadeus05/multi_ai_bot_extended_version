@@ -47,10 +47,6 @@ class NoopDependency:
     pass
 
 
-async def noop_execution_listener(*_args):
-    return None
-
-
 def make_engine(portfolio: PortfolioManager) -> TradingEngine:
     return TradingEngine(
         exchange=NoopDependency(),
@@ -60,7 +56,6 @@ def make_engine(portfolio: PortfolioManager) -> TradingEngine:
         risk_manager=NoopRisk(),
         portfolio=portfolio,
         execution=NoopDependency(),
-        execution_listener=noop_execution_listener,
     )
 
 
