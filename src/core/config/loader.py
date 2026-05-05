@@ -153,8 +153,6 @@ def load_paper_settings(overrides: dict[str, Any] | None = None) -> PaperSetting
         trading=load_trading_settings(mode="paper"),
         ws_url=_env("WS_URL", "wss://stream.bybit.com/v5/public/linear"),
         testnet=True,
-        exit_heartbeat_enabled=_bool(_env("PAPER_EXIT_HEARTBEAT_ENABLED", "1")),
-        exit_timeframe=_env("PAPER_EXIT_TIMEFRAME", "1m"),
     )
     return _apply_overrides(settings, overrides)
 
