@@ -7,6 +7,7 @@ from contextlib import suppress
 from application.event_journal import EventJournal
 from application.trading_engine import TradingEngine
 from application.trading_runtime_loop import TradingRuntimeLoop
+from application.trading_state_restorer import NoopTradingStateRestorer, TradingStateRestorer
 from core.interfaces.data_provider import DataProvider
 from core.interfaces.model import Model
 from core.interfaces.notifier import Notifier
@@ -33,6 +34,7 @@ class RealtimeOrchestrator:
         runtime: TradingRuntimeLoop | None = None,
         journal: EventJournal | None = None,
         notifier: Notifier | None = None,
+        state_restorer: TradingStateRestorer | None = None,
     ) -> None:
         self._notifier = notifier
         self._runtime = runtime or TradingRuntimeLoop(engine, journal=journal, notifier=notifier)
@@ -40,6 +42,19 @@ class RealtimeOrchestrator:
         self._model = model
         self._symbols = symbols
         self._warmup_bars = warmup_bars if warmup_bars is not None else model.required_bars()
+        self._state_restorer = state_restorer or NoopTradingStateRestorer(source="realtime")
+
+    def set_state_restorer(self, state_restorer: TradingStateRestorer | None) -> None:
+        self._state_restorer = state_restorer or NoopTradingStateRestorer(source="realtime")
+
+    async def restore_trading_state(self) -> None:
+        result = await self._state_restorer.restore_trading_state()
+        logger.info(
+            "Realtime state restore finished | source=%s | restored=%s | positions=%s",
+            result.source,
+            result.restored,
+            result.positions_count,
+        )
 
     async def bootstrap(self) -> None:
         logger.info("Realtime bootstrap started | symbols=%s | warmup_bars=%s", ", ".join(self._symbols), self._warmup_bars)
@@ -55,6 +70,7 @@ class RealtimeOrchestrator:
         await self._runtime.publish(MarketEvent(tick))
 
     async def run(self) -> None:
+        await self.restore_trading_state()
         await self.bootstrap()
         for symbol in self._symbols:
             self._data_provider.subscribe(symbol, self._publish_tick)
