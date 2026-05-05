@@ -123,7 +123,15 @@ class TelegramNotifier(Notifier):
             },
             timeout=self._timeout,
         )
-        response.raise_for_status()
+        try:
+            response.raise_for_status()
+        except requests.HTTPError:
+            logger.error(
+                "Telegram API error | status=%s | response=%s",
+                response.status_code,
+                response.text,
+            )
+            raise
 
 
 class CompositeNotifier(Notifier):

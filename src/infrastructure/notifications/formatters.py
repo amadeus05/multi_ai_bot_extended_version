@@ -67,15 +67,15 @@ def format_system_text(notification: SystemNotification) -> str:
 
 
 def format_signal_html(notification: SignalNotification) -> str:
-    return _html(format_signal_text(notification)).replace("\n", "<br>")
+    return _html(format_signal_text(notification))
 
 
 def format_trade_exit_html(notification: TradeExitNotification) -> str:
-    return _html(format_trade_exit_text(notification)).replace("\n", "<br>")
+    return _html(format_trade_exit_text(notification))
 
 
 def format_system_html(notification: SystemNotification) -> str:
-    return _html(format_system_text(notification)).replace("\n", "<br>")
+    return _html(format_system_text(notification))
 
 
 def _fmt_ts(value: pd.Timestamp) -> str:
