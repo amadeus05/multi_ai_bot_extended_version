@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 
 from core.types.commands import CancelOrderCommand, PlaceOrderCommand
-from core.types.domain_types import Order
+from core.types.domain_types import Order, Tick
 from core.types.enums import OrderSide, OrderStatus
 from core.types.events import FillEvent, OrderAcceptedEvent, OrderCancelledEvent, OrderRejectedEvent
 from domain.execution.execution_service import ExecutionService
@@ -130,3 +130,26 @@ def test_lifecycle_exchange_is_delegated_after_client_order_id_is_assigned() -> 
     assert len(events) == 1
     assert isinstance(events[0], OrderAcceptedEvent)
     assert events[0].client_order_id == order.client_order_id
+
+
+def test_execution_service_assigns_deterministic_client_order_id_when_tick_context_exists() -> None:
+    exchange = LifecycleExchange()
+    order = make_order()
+    tick = Tick(
+        symbol="BTC/USDT",
+        ts=pd.Timestamp("2024-01-01T00:00:00"),
+        bid=100.0,
+        ask=100.0,
+        price=100.0,
+        volume=1.0,
+    )
+    command = PlaceOrderCommand(order, reason="ENTRY", ts=tick.ts, source_tick=tick)
+
+    asyncio.run(ExecutionService().execute(command, exchange))
+    first_id = order.client_order_id
+
+    second_order = make_order()
+    second_command = PlaceOrderCommand(second_order, reason="ENTRY", ts=tick.ts, source_tick=tick)
+    asyncio.run(ExecutionService().execute(second_command, exchange))
+
+    assert first_id == second_order.client_order_id

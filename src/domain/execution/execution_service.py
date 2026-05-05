@@ -1,5 +1,3 @@
-import uuid
-
 from core.interfaces.exchange import Exchange
 from core.interfaces.execution_lifecycle import ExecutionLifecycleExchange
 from core.types.commands import CancelOrderCommand, PlaceOrderCommand, TradingCommand
@@ -7,6 +5,7 @@ from core.types.domain_types import Order
 from core.types.enums import OrderStatus
 from core.types.events import TradingEvent
 from core.types.execution_event_factory import ExecutionEventFactory
+from domain.execution.client_order_id import ensure_client_order_id
 
 
 class ExecutionService:
@@ -14,7 +13,7 @@ class ExecutionService:
         if isinstance(command, Order):
             command = PlaceOrderCommand(command)
         if isinstance(command, PlaceOrderCommand):
-            self.ensure_client_order_id(command.order)
+            self.ensure_client_order_id(command.order, command)
             if isinstance(exchange, ExecutionLifecycleExchange):
                 return await exchange.submit_order_lifecycle(command)
             return await self._place_order_legacy(command, exchange)
@@ -25,9 +24,8 @@ class ExecutionService:
         return []
 
     @staticmethod
-    def ensure_client_order_id(order: Order) -> None:
-        if order.client_order_id is None:
-            order.client_order_id = str(uuid.uuid4())
+    def ensure_client_order_id(order: Order, command: PlaceOrderCommand | None = None) -> None:
+        ensure_client_order_id(order, command)
 
     async def _place_order_legacy(self, command: PlaceOrderCommand, exchange: Exchange) -> list[TradingEvent]:
         order = command.order

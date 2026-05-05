@@ -303,7 +303,7 @@ class TradingEngine:
             command = pending.pop(0)
             if isinstance(command, (PlaceOrderCommand, CancelOrderCommand)):
                 if isinstance(command, PlaceOrderCommand) and hasattr(execution, "ensure_client_order_id"):
-                    execution.ensure_client_order_id(command.order)
+                    execution.ensure_client_order_id(command.order, command)
                 if self._event_journal is not None:
                     await self._event_journal.record_command(command, source="engine")
                 command_events = await execution.execute(command, exchange)
