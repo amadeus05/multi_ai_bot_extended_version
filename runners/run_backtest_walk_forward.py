@@ -20,14 +20,13 @@ from application.training.data_loader import load_training_frame
 from application.training.walk_forward_pipeline import WalkForwardPipeline
 from application.trading_runtime_loop import TradingRuntimeLoop
 from application.trading_runtime_factory import build_trading_engine
-from core.config.loader import load_backtest_settings, load_storage_settings
+from core.config.loader import load_backtest_settings
 from core.config.train_config import TrainConfig
 from core.types.events import MarketEvent
 from domain.portfolio.portfolio_manager import PortfolioManager
 from infrastructure.data_providers.historical_replay_provider import HistoricalReplayProvider
-from infrastructure.notifications import build_notifier
+from infrastructure.notifications import SilentNotifier
 from infrastructure.exchanges.simulation.simulated_exchange import SimulatedExchange
-from infrastructure.storage.storage_factory import build_event_journal
 
 
 def _filter_backtest_frame(frame: pd.DataFrame, *, start: str, end: str) -> pd.DataFrame:
@@ -129,7 +128,7 @@ async def main() -> None:
         portfolio=portfolio,
         charts_dir=backtest_settings.charts_dir,
     )
-    notifier = build_notifier(trading.notifications)
+    notifier = SilentNotifier()
     engine = build_trading_engine(
         settings=trading,
         exchange=exchange,
@@ -139,7 +138,7 @@ async def main() -> None:
         execution_listener=reporter.on_execution,
         notifier=notifier,
     )
-    runtime = TradingRuntimeLoop(engine, journal=build_event_journal(load_storage_settings()), notifier=notifier)
+    runtime = TradingRuntimeLoop(engine, journal=None, notifier=notifier)
 
     print(
         f"TradingEngine Walk-forward OOS backtest | {symbol} | rows={len(frame)} | "
