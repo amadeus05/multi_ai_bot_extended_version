@@ -5,7 +5,8 @@ import pandas as pd
 from application.realtime_orchestrator import RealtimeOrchestrator
 from application.trading_state_restorer import ExchangeSnapshotStateRestorer, RestoreResult
 from core.types.domain_types import Position
-from core.types.enums import PositionSide
+from core.types.enums import OrderSide, PositionSide
+from core.types.events import FillEvent
 from domain.portfolio.portfolio_manager import PortfolioManager
 
 
@@ -82,3 +83,67 @@ def test_realtime_orchestrator_restores_before_warmup_and_subscribe() -> None:
     asyncio.run(orchestrator.run())
 
     assert calls == ["restore", "warmup", "subscribe", "run"]
+
+
+class BlockingProvider:
+    async def warmup(self, symbol: str, bars: int) -> pd.DataFrame:
+        return pd.DataFrame([{"timestamp": pd.Timestamp("2024-01-01")}])
+
+    def subscribe(self, symbol: str, callback) -> None:
+        return None
+
+    async def run(self) -> None:
+        await asyncio.Event().wait()
+
+
+class CapturingRuntime:
+    def __init__(self) -> None:
+        self.events = []
+        self._stop = asyncio.Event()
+
+    async def publish(self, event) -> None:
+        self.events.append(event)
+
+    def start(self):
+        async def wait_until_stopped():
+            await self._stop.wait()
+
+        return asyncio.create_task(wait_until_stopped())
+
+    async def stop(self) -> None:
+        self._stop.set()
+
+    async def drain(self) -> None:
+        return None
+
+
+async def one_fill_source():
+    yield FillEvent(
+        ts=pd.Timestamp("2024-01-01T00:00:00"),
+        order_id="order-1",
+        client_order_id="client-1",
+        symbol="BTC/USDT",
+        side=OrderSide.BUY,
+        amount=1.0,
+        price=100.0,
+        fee=0.0,
+        event_id="order-1:fill:exec-1",
+    )
+
+
+def test_realtime_orchestrator_publishes_execution_source_events() -> None:
+    runtime = CapturingRuntime()
+    orchestrator = RealtimeOrchestrator(
+        engine=FakeEngine(),
+        data_provider=BlockingProvider(),
+        model=FakeModel(),
+        symbols=["BTC/USDT"],
+        runtime=runtime,
+    )
+    orchestrator.set_execution_event_source(one_fill_source)
+
+    asyncio.run(orchestrator.run())
+
+    assert len(runtime.events) == 1
+    assert isinstance(runtime.events[0], FillEvent)
+    assert runtime.events[0].event_id == "order-1:fill:exec-1"

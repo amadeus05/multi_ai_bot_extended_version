@@ -1,4 +1,5 @@
 import asyncio
+import queue
 
 import pandas as pd
 import pytest
@@ -9,6 +10,7 @@ from core.types.enums import OrderSide, OrderStatus, OrderType
 from core.types.events import FillEvent, OrderAcceptedEvent, OrderCancelledEvent, OrderRejectedEvent
 from infrastructure.exchanges.bybit.bybit_execution_exchange import BybitExecutionExchange
 from infrastructure.exchanges.bybit.bybit_instrument_filters import BybitInstrumentFilter, BybitInstrumentFilterCache
+from infrastructure.exchanges.bybit.bybit_private_stream import BybitPrivateStreamMessage
 from infrastructure.exchanges.bybit.bybit_rest_client import BybitRestError
 from infrastructure.exchanges.bybit.bybit_execution_safety import BybitExecutionSafety
 
@@ -60,6 +62,28 @@ def make_exchange(client: FakeBybitClient, *, safety: BybitExecutionSafety | Non
         instrument_filters=filters,
         safety=safety,
     )
+
+
+class FakePrivateStream:
+    def __init__(self, messages: list[BybitPrivateStreamMessage] | None = None, authenticated: bool = True) -> None:
+        self.messages = queue.Queue()
+        for message in messages or []:
+            self.messages.put(message)
+        self.authenticated = authenticated
+        self.started = False
+        self.stopped = False
+
+    def start(self) -> None:
+        self.started = True
+
+    def stop(self) -> None:
+        self.stopped = True
+
+    def wait_until_authenticated(self, timeout: float = 15.0) -> bool:
+        return self.authenticated
+
+    def get_message(self, timeout: float | None = None) -> BybitPrivateStreamMessage:
+        return self.messages.get(timeout=timeout)
 
 
 def test_submit_order_lifecycle_returns_accepted_only_from_create_ack() -> None:
@@ -219,3 +243,60 @@ def test_current_price_uses_unsigned_ticker_request() -> None:
 
     assert price == pytest.approx(101.5)
     assert client.gets[0] == ("/v5/market/tickers", {"category": "linear", "symbol": "BTCUSDT"}, False, "ticker")
+
+
+def test_stream_private_events_maps_execution_messages_and_marks_sync() -> None:
+    client = FakeBybitClient()
+    stream = FakePrivateStream(
+        [
+            BybitPrivateStreamMessage(
+                topic="execution",
+                payload={
+                    "topic": "execution",
+                    "data": [
+                        {
+                            "symbol": "BTCUSDT",
+                            "orderId": "order-1",
+                            "orderLinkId": "client-1",
+                            "side": "Buy",
+                            "execId": "exec-1",
+                            "execPrice": "100",
+                            "execQty": "0.1",
+                            "execFee": "0.01",
+                            "execTime": "1710000000000",
+                        }
+                    ],
+                },
+            )
+        ]
+    )
+    exchange = BybitExecutionExchange("key", "secret", testnet=True, client=client, private_stream=stream)
+
+    async def collect_one() -> FillEvent:
+        async for event in exchange.stream_private_events():
+            return event
+
+    event = asyncio.run(collect_one())
+
+    assert stream.started is True
+    assert stream.stopped is True
+    assert exchange._private_synced is False
+    assert isinstance(event, FillEvent)
+    assert event.event_id == "order-1:fill:exec-1"
+
+
+def test_stream_private_events_fails_when_authentication_times_out() -> None:
+    client = FakeBybitClient()
+    stream = FakePrivateStream(authenticated=False)
+    exchange = BybitExecutionExchange("key", "secret", testnet=True, client=client, private_stream=stream)
+
+    async def consume() -> None:
+        async for _ in exchange.stream_private_events():
+            pass
+
+    with pytest.raises(RuntimeError, match="authentication timeout"):
+        asyncio.run(consume())
+
+    assert stream.started is True
+    assert stream.stopped is True
+    assert exchange._private_synced is False

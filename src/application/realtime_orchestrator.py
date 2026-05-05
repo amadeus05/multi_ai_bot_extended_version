@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import AsyncIterator, Callable
 from contextlib import suppress
 
 from application.event_journal import EventJournal
@@ -12,7 +13,7 @@ from core.interfaces.data_provider import DataProvider
 from core.interfaces.model import Model
 from core.interfaces.notifier import Notifier
 from core.types.domain_types import Tick
-from core.types.events import MarketEvent
+from core.types.events import MarketEvent, TradingEvent
 
 logger = logging.getLogger(__name__)
 
@@ -43,9 +44,13 @@ class RealtimeOrchestrator:
         self._symbols = symbols
         self._warmup_bars = warmup_bars if warmup_bars is not None else model.required_bars()
         self._state_restorer = state_restorer or NoopTradingStateRestorer(source="realtime")
+        self._execution_event_source: Callable[[], AsyncIterator[TradingEvent]] | None = None
 
     def set_state_restorer(self, state_restorer: TradingStateRestorer | None) -> None:
         self._state_restorer = state_restorer or NoopTradingStateRestorer(source="realtime")
+
+    def set_execution_event_source(self, source: Callable[[], AsyncIterator[TradingEvent]] | None) -> None:
+        self._execution_event_source = source
 
     async def restore_trading_state(self) -> None:
         result = await self._state_restorer.restore_trading_state()
@@ -69,6 +74,12 @@ class RealtimeOrchestrator:
     async def _publish_tick(self, tick: Tick) -> None:
         await self._runtime.publish(MarketEvent(tick))
 
+    async def _run_execution_event_source(self) -> None:
+        if self._execution_event_source is None:
+            return
+        async for event in self._execution_event_source():
+            await self._runtime.publish(event)
+
     async def run(self) -> None:
         await self.restore_trading_state()
         await self.bootstrap()
@@ -77,13 +88,24 @@ class RealtimeOrchestrator:
 
         runtime_task = self._runtime.start()
         provider_task = asyncio.create_task(self._data_provider.run())
+        execution_source_task = (
+            asyncio.create_task(self._run_execution_event_source())
+            if self._execution_event_source is not None
+            else None
+        )
         try:
+            tasks = {runtime_task, provider_task}
+            if execution_source_task is not None:
+                tasks.add(execution_source_task)
             done, pending = await asyncio.wait(
-                {runtime_task, provider_task},
+                tasks,
                 return_when=asyncio.FIRST_COMPLETED,
             )
             if provider_task in done:
                 provider_task.result()
+                await self._runtime.drain()
+            elif execution_source_task is not None and execution_source_task in done:
+                execution_source_task.result()
                 await self._runtime.drain()
             else:
                 runtime_task.result()
@@ -98,6 +120,10 @@ class RealtimeOrchestrator:
                 provider_task.cancel()
                 with suppress(asyncio.CancelledError):
                     await provider_task
+            if execution_source_task is not None and not execution_source_task.done():
+                execution_source_task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await execution_source_task
             if not runtime_task.done():
                 with suppress(asyncio.CancelledError):
                     await runtime_task

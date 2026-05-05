@@ -33,6 +33,7 @@ async def main() -> None:
     orchestrator.set_state_restorer(
         ExchangeSnapshotStateRestorer(exchange=exchange, portfolio=portfolio)
     )
+    orchestrator.set_execution_event_source(exchange.stream_private_events)
     await orchestrator.run()
 
 

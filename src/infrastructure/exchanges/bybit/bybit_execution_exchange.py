@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import asyncio
+import queue
+from collections.abc import AsyncIterator
+
 from core.types.commands import CancelOrderCommand, PlaceOrderCommand
 from core.interfaces.exchange import Exchange
 from core.types.domain_types import Order, Position
@@ -15,6 +19,7 @@ from infrastructure.exchanges.bybit.bybit_execution_safety import (
     BybitExecutionSafety,
     BybitExecutionSafetyError,
 )
+from infrastructure.exchanges.bybit.bybit_private_stream import BybitPrivateStream
 
 
 class BybitExecutionExchange(Exchange):
@@ -31,6 +36,7 @@ class BybitExecutionExchange(Exchange):
         mapper: BybitExecutionMapper | None = None,
         instrument_filters: BybitInstrumentFilterCache | None = None,
         safety: BybitExecutionSafety | None = None,
+        private_stream: BybitPrivateStream | None = None,
     ) -> None:
         self._api_key = api_key
         self._secret = secret
@@ -39,10 +45,33 @@ class BybitExecutionExchange(Exchange):
         self.mapper = mapper or BybitExecutionMapper(category=category)
         self.instrument_filters = instrument_filters or BybitInstrumentFilterCache(self.client, category=category)
         self.safety = safety or BybitExecutionSafety()
+        self.private_stream = private_stream or BybitPrivateStream(api_key, secret, testnet=testnet)
         self._private_synced = False
 
     def set_private_synced(self, synced: bool) -> None:
         self._private_synced = bool(synced)
+
+    async def stream_private_events(self) -> AsyncIterator[TradingEvent]:
+        stream = self.private_stream
+        loop = asyncio.get_running_loop()
+        stream.start()
+        authenticated = await loop.run_in_executor(None, stream.wait_until_authenticated, 15.0)
+        if not authenticated:
+            self.set_private_synced(False)
+            stream.stop()
+            raise RuntimeError("Bybit private websocket authentication timeout")
+        self.set_private_synced(True)
+        try:
+            while True:
+                try:
+                    message = await loop.run_in_executor(None, stream.get_message, 1.0)
+                except queue.Empty:
+                    continue
+                for event in self.mapper.private_events_from_payload(message.payload):
+                    yield event
+        finally:
+            self.set_private_synced(False)
+            stream.stop()
 
     async def place_order(self, order: Order) -> str:
         events = await self.submit_order_lifecycle(PlaceOrderCommand(order))
