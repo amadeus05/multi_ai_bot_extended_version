@@ -19,6 +19,26 @@ class FakeExchange:
         return [Position("BTC/USDT", PositionSide.LONG, amount=0.2, entry_price=30000.0)]
 
 
+class FakeSnapshotExchange:
+    async def restore_snapshot(self, *, quote_asset: str = "USDT"):
+        assert quote_asset == "USDT"
+        return type(
+            "Snapshot",
+            (),
+            {
+                "balance": 4321.0,
+                "positions": [Position("ETH/USDT", PositionSide.SHORT, amount=1.5, entry_price=2000.0)],
+                "open_orders": [{"orderId": "open-1"}],
+                "recent_executions": [{"execId": "exec-1"}, {"execId": "exec-2"}],
+            },
+        )()
+
+
+class FailingSnapshotExchange:
+    async def restore_snapshot(self, *, quote_asset: str = "USDT"):
+        raise RuntimeError("restore failed")
+
+
 def test_exchange_snapshot_restorer_updates_in_memory_portfolio() -> None:
     portfolio = PortfolioManager(cash={"USDT": 100.0})
     restorer = ExchangeSnapshotStateRestorer(exchange=FakeExchange(), portfolio=portfolio)
@@ -31,6 +51,35 @@ def test_exchange_snapshot_restorer_updates_in_memory_portfolio() -> None:
     assert portfolio.cash["USDT"] == 1234.5
     assert portfolio.positions[0].symbol == "BTC/USDT"
     assert portfolio.positions[0].amount == 0.2
+
+
+def test_exchange_snapshot_restorer_prefers_snapshot_when_available() -> None:
+    portfolio = PortfolioManager(cash={"USDT": 100.0})
+    restorer = ExchangeSnapshotStateRestorer(exchange=FakeSnapshotExchange(), portfolio=portfolio)
+
+    result = asyncio.run(restorer.restore_trading_state())
+
+    assert result.restored is True
+    assert result.positions_count == 1
+    assert result.open_orders_count == 1
+    assert result.recent_executions_count == 2
+    assert portfolio.cash["USDT"] == 4321.0
+    assert portfolio.positions[0].symbol == "ETH/USDT"
+    assert portfolio.positions[0].side == PositionSide.SHORT
+
+
+def test_exchange_snapshot_restorer_fails_fast_when_snapshot_fails() -> None:
+    portfolio = PortfolioManager(cash={"USDT": 100.0})
+    restorer = ExchangeSnapshotStateRestorer(exchange=FailingSnapshotExchange(), portfolio=portfolio)
+
+    try:
+        asyncio.run(restorer.restore_trading_state())
+        assert False, "expected restore failure"
+    except RuntimeError as exc:
+        assert "restore failed" in str(exc)
+
+    assert portfolio.cash["USDT"] == 100.0
+    assert portfolio.positions == []
 
 
 class FakeRestorer:

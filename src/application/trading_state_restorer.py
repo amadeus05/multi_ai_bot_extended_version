@@ -16,6 +16,8 @@ class RestoreResult:
     restored: bool
     source: str
     positions_count: int = 0
+    open_orders_count: int = 0
+    recent_executions_count: int = 0
     message: str = ""
 
 
@@ -50,8 +52,17 @@ class ExchangeSnapshotStateRestorer:
 
     async def restore_trading_state(self) -> RestoreResult:
         try:
-            balance = await self._exchange.get_balance(self._quote_asset)
-            positions = await self._exchange.get_positions()
+            if hasattr(self._exchange, "restore_snapshot"):
+                snapshot = await self._exchange.restore_snapshot(quote_asset=self._quote_asset)
+                balance = float(snapshot.balance)
+                positions = list(snapshot.positions)
+                open_orders_count = len(snapshot.open_orders)
+                recent_executions_count = len(snapshot.recent_executions)
+            else:
+                balance = await self._exchange.get_balance(self._quote_asset)
+                positions = await self._exchange.get_positions()
+                open_orders_count = 0
+                recent_executions_count = 0
         except Exception:
             logger.exception("Trading state restore failed")
             raise
@@ -62,12 +73,16 @@ class ExchangeSnapshotStateRestorer:
             restored=True,
             source="exchange_snapshot",
             positions_count=len(positions),
+            open_orders_count=open_orders_count,
+            recent_executions_count=recent_executions_count,
             message="trading state restored from exchange snapshot",
         )
         logger.info(
-            "Trading state restored | source=%s | positions=%s | %s_balance=%.8f",
+            "Trading state restored | source=%s | positions=%s | open_orders=%s | recent_executions=%s | %s_balance=%.8f",
             result.source,
             result.positions_count,
+            result.open_orders_count,
+            result.recent_executions_count,
             self._quote_asset,
             float(balance),
         )

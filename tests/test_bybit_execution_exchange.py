@@ -245,6 +245,45 @@ def test_current_price_uses_unsigned_ticker_request() -> None:
     assert client.gets[0] == ("/v5/market/tickers", {"category": "linear", "symbol": "BTCUSDT"}, False, "ticker")
 
 
+def test_restore_snapshot_fetches_balance_positions_open_orders_and_executions() -> None:
+    client = FakeBybitClient()
+    client.get_responses = [
+        {"retCode": 0, "result": {"list": [{"coin": [{"coin": "USDT", "walletBalance": "1000"}]}]}},
+        {
+            "retCode": 0,
+            "result": {
+                "list": [
+                    {
+                        "symbol": "BTCUSDT",
+                        "side": "Buy",
+                        "size": "0.2",
+                        "avgPrice": "30000",
+                    }
+                ]
+            },
+        },
+        {"retCode": 0, "result": {"list": [{"orderId": "open-1"}]}},
+        {"retCode": 0, "result": {"list": [{"execId": "exec-1"}]}},
+    ]
+    exchange = make_exchange(client)
+
+    snapshot = asyncio.run(exchange.restore_snapshot(["BTC/USDT"]))
+
+    assert snapshot.balance == pytest.approx(1000.0)
+    assert len(snapshot.positions) == 1
+    assert snapshot.positions[0].symbol == "BTC/USDT"
+    assert snapshot.open_orders == [{"orderId": "open-1"}]
+    assert snapshot.recent_executions == [{"execId": "exec-1"}]
+    assert [call[0] for call in client.gets] == [
+        "/v5/account/wallet-balance",
+        "/v5/position/list",
+        "/v5/order/realtime",
+        "/v5/execution/list",
+    ]
+    assert client.gets[2][1] == {"category": "linear", "symbol": "BTCUSDT"}
+    assert client.gets[3][1] == {"category": "linear", "symbol": "BTCUSDT"}
+
+
 def test_stream_private_events_maps_execution_messages_and_marks_sync() -> None:
     client = FakeBybitClient()
     stream = FakePrivateStream(

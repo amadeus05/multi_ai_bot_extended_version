@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 import queue
 from collections.abc import AsyncIterator
+from dataclasses import dataclass
+from typing import Any
 
 from core.types.commands import CancelOrderCommand, PlaceOrderCommand
 from core.interfaces.exchange import Exchange
@@ -20,6 +22,14 @@ from infrastructure.exchanges.bybit.bybit_execution_safety import (
     BybitExecutionSafetyError,
 )
 from infrastructure.exchanges.bybit.bybit_private_stream import BybitPrivateStream
+
+
+@dataclass(frozen=True)
+class BybitExecutionSnapshot:
+    balance: float
+    positions: list[Position]
+    open_orders: list[dict[str, Any]]
+    recent_executions: list[dict[str, Any]]
 
 
 class BybitExecutionExchange(Exchange):
@@ -155,6 +165,33 @@ class BybitExecutionExchange(Exchange):
                 positions.append(position)
         return positions
 
+    async def get_open_orders(self, symbols: list[str] | tuple[str, ...] | None = None) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        for params in self._symbol_params(symbols):
+            response = self.client.get("/v5/order/realtime", params, request_name="open_orders")
+            rows.extend((response.get("result") or {}).get("list") or [])
+        return rows
+
+    async def get_recent_executions(self, symbols: list[str] | tuple[str, ...] | None = None) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        for params in self._symbol_params(symbols):
+            response = self.client.get("/v5/execution/list", params, request_name="execution_list")
+            rows.extend((response.get("result") or {}).get("list") or [])
+        return rows
+
+    async def restore_snapshot(
+        self,
+        symbols: list[str] | tuple[str, ...] | None = None,
+        *,
+        quote_asset: str = "USDT",
+    ) -> BybitExecutionSnapshot:
+        return BybitExecutionSnapshot(
+            balance=await self.get_balance(quote_asset),
+            positions=await self.get_positions(),
+            open_orders=await self.get_open_orders(symbols),
+            recent_executions=await self.get_recent_executions(symbols),
+        )
+
     async def current_price(self, symbol: str) -> float:
         response = self.client.get(
             "/v5/market/tickers",
@@ -182,3 +219,14 @@ class BybitExecutionExchange(Exchange):
         if not rows:
             return {"status": "rejected", "reason": "Bybit order not found", "order_id": order_id}
         return self.mapper.to_status(rows[0])
+
+    def _symbol_params(self, symbols: list[str] | tuple[str, ...] | None = None) -> list[dict[str, Any]]:
+        if not symbols:
+            return [{"category": self.mapper.category, "settleCoin": "USDT"}]
+        return [
+            {
+                "category": self.mapper.category,
+                "symbol": self.mapper.to_api_symbol(symbol),
+            }
+            for symbol in symbols
+        ]
