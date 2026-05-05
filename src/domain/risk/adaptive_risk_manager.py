@@ -40,10 +40,32 @@ class AdaptiveRiskManager(RiskManager):
             self._sl_per_day[day_key] = self._sl_per_day.get(day_key, 0) + 1
             self._symbol_cooldown_until_bar[symbol] = self._bar_index + self.profile.sl_cooldown_bars
 
+        prev_losses = self._consecutive_losses
         if pnl < 0:
             self._consecutive_losses += 1
+            if self._risk_reduction_enabled() and prev_losses < self.profile.reduce_risk_after_consecutive_losses <= self._consecutive_losses:
+                print(
+                    f"[{bar_ts}] ⚠️ Loss streak {self._consecutive_losses}: "
+                    f"risk per trade reduced to {self._fmt_risk_pct(self.profile.reduced_risk_per_trade)}"
+                )
         else:
+            if self._risk_reduction_enabled() and prev_losses >= self.profile.reduce_risk_after_consecutive_losses:
+                print(
+                    f"[{bar_ts}] ℹ️ Loss streak reset: "
+                    f"risk per trade restored to {self._fmt_risk_pct(self.profile.risk_per_trade)}"
+                )
             self._consecutive_losses = 0
+
+    def _risk_reduction_enabled(self) -> bool:
+        return (
+            int(self.profile.reduce_risk_after_consecutive_losses) > 0
+            and float(self.profile.reduced_risk_per_trade) > 0
+            and float(self.profile.reduced_risk_per_trade) != float(self.profile.risk_per_trade)
+        )
+
+    @staticmethod
+    def _fmt_risk_pct(value: float) -> str:
+        return f"{float(value) * 100.0:.2f}%"
 
     def check(self, order: Order, portfolio, exchange):
         ctx = RiskContext(

@@ -118,3 +118,27 @@ def test_risk_manager_blocks_entries_after_daily_stop_loss_limit() -> None:
     manager.register_trade_result("BTC/USDT", pnl=-10.0, bar_ts=ts, stop_loss_hit=True)
 
     assert manager.check(make_order("ETH/USDT"), portfolio, exchange=object()) is None
+
+
+def test_risk_manager_logs_risk_reduction_and_restore(capsys) -> None:
+    manager = AdaptiveRiskManager(
+        make_profile(
+            risk_per_trade=0.01,
+            reduce_risk_after_consecutive_losses=2,
+            reduced_risk_per_trade=0.005,
+        )
+    )
+
+    manager.register_trade_result("BTC/USDT", pnl=-1.0, bar_ts=pd.Timestamp("2024-10-07T17:00:00"))
+    assert capsys.readouterr().out == ""
+
+    manager.register_trade_result("BTC/USDT", pnl=-1.0, bar_ts=pd.Timestamp("2024-10-07T18:00:00"))
+    reduced = capsys.readouterr().out
+    assert "[2024-10-07 18:00:00] ⚠️ Loss streak 2: risk per trade reduced to 0.50%" in reduced
+
+    manager.register_trade_result("BTC/USDT", pnl=-1.0, bar_ts=pd.Timestamp("2024-10-08T18:00:00"))
+    assert capsys.readouterr().out == ""
+
+    manager.register_trade_result("BTC/USDT", pnl=1.0, bar_ts=pd.Timestamp("2024-10-10T18:00:00"))
+    restored = capsys.readouterr().out
+    assert "[2024-10-10 18:00:00] ℹ️ Loss streak reset: risk per trade restored to 1.00%" in restored
