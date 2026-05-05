@@ -3,20 +3,29 @@ from core.interfaces.execution_lifecycle import ExecutionLifecycleExchange
 from core.types.commands import CancelOrderCommand, PlaceOrderCommand, TradingCommand
 from core.types.domain_types import Order
 from core.types.enums import OrderStatus
-from core.types.events import TradingEvent
+from core.types.events import OrderAcceptedEvent, OrderRejectedEvent, TradingEvent
 from core.types.execution_event_factory import ExecutionEventFactory
 from domain.execution.client_order_id import ensure_client_order_id
+from domain.execution.order_intent_store import OrderIntentStore
 
 
 class ExecutionService:
+    def __init__(self, order_intent_store: OrderIntentStore | None = None) -> None:
+        self._order_intent_store = order_intent_store
+
     async def execute(self, command: TradingCommand | Order, exchange: Exchange) -> list[TradingEvent]:
         if isinstance(command, Order):
             command = PlaceOrderCommand(command)
         if isinstance(command, PlaceOrderCommand):
             self.ensure_client_order_id(command.order, command)
+            if not await self._record_order_intent(command):
+                return []
             if isinstance(exchange, ExecutionLifecycleExchange):
-                return await exchange.submit_order_lifecycle(command)
-            return await self._place_order_legacy(command, exchange)
+                events = await exchange.submit_order_lifecycle(command)
+            else:
+                events = await self._place_order_legacy(command, exchange)
+            await self._record_order_result(events)
+            return events
         if isinstance(command, CancelOrderCommand):
             if isinstance(exchange, ExecutionLifecycleExchange):
                 return await exchange.cancel_order_lifecycle(command)
@@ -26,6 +35,20 @@ class ExecutionService:
     @staticmethod
     def ensure_client_order_id(order: Order, command: PlaceOrderCommand | None = None) -> None:
         ensure_client_order_id(order, command)
+
+    async def _record_order_intent(self, command: PlaceOrderCommand) -> bool:
+        if self._order_intent_store is None:
+            return True
+        return await self._order_intent_store.record_pending(command)
+
+    async def _record_order_result(self, events: list[TradingEvent]) -> None:
+        if self._order_intent_store is None:
+            return
+        for event in events:
+            if isinstance(event, OrderAcceptedEvent):
+                await self._order_intent_store.mark_accepted(event.client_order_id, event.order_id)
+            elif isinstance(event, OrderRejectedEvent) and event.client_order_id:
+                await self._order_intent_store.mark_rejected(event.client_order_id, event.reason)
 
     async def _place_order_legacy(self, command: PlaceOrderCommand, exchange: Exchange) -> list[TradingEvent]:
         order = command.order

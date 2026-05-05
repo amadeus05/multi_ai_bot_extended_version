@@ -8,6 +8,7 @@ from core.types.domain_types import Order, Tick
 from core.types.enums import OrderSide, OrderStatus
 from core.types.events import FillEvent, OrderAcceptedEvent, OrderCancelledEvent, OrderRejectedEvent
 from domain.execution.execution_service import ExecutionService
+from domain.execution.order_intent_store import InMemoryOrderIntentStore
 
 
 class LegacyExchange:
@@ -153,3 +154,50 @@ def test_execution_service_assigns_deterministic_client_order_id_when_tick_conte
     asyncio.run(ExecutionService().execute(second_command, exchange))
 
     assert first_id == second_order.client_order_id
+
+
+def test_execution_service_intent_store_blocks_duplicate_submit() -> None:
+    store = InMemoryOrderIntentStore()
+    exchange = LifecycleExchange()
+    service = ExecutionService(order_intent_store=store)
+    order = make_order()
+    order.client_order_id = "duplicate-client-id"
+    command = PlaceOrderCommand(order, ts=pd.Timestamp("2024-01-01T00:00:00"))
+
+    first_events = asyncio.run(service.execute(command, exchange))
+    second_events = asyncio.run(service.execute(command, exchange))
+
+    assert len(first_events) == 1
+    assert second_events == []
+    assert len(exchange.submitted_commands) == 1
+    intent = asyncio.run(store.get("duplicate-client-id"))
+    assert intent.status == "accepted"
+    assert intent.order_id == "life-order-1"
+
+
+def test_execution_service_intent_store_records_rejection_reason() -> None:
+    store = InMemoryOrderIntentStore()
+    service = ExecutionService(order_intent_store=store)
+    order = make_order()
+    order.client_order_id = "rejected-client-id"
+    exchange = LegacyExchange(status={"status": OrderStatus.REJECTED, "reason": "min qty"})
+
+    events = asyncio.run(service.execute(PlaceOrderCommand(order), exchange))
+
+    assert isinstance(events[0], OrderRejectedEvent)
+    intent = asyncio.run(store.get("rejected-client-id"))
+    assert intent.status == "rejected"
+    assert intent.reject_reason == "min qty"
+
+
+def test_execution_service_without_intent_store_keeps_legacy_duplicate_behavior() -> None:
+    exchange = LifecycleExchange()
+    service = ExecutionService()
+    order = make_order()
+    order.client_order_id = "same-client-id"
+    command = PlaceOrderCommand(order, ts=pd.Timestamp("2024-01-01T00:00:00"))
+
+    asyncio.run(service.execute(command, exchange))
+    asyncio.run(service.execute(command, exchange))
+
+    assert len(exchange.submitted_commands) == 2
