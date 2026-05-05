@@ -11,6 +11,10 @@ from infrastructure.exchanges.bybit.bybit_instrument_filters import (
     BybitInstrumentFilterError,
 )
 from infrastructure.exchanges.bybit.bybit_rest_client import BybitRestClient, BybitRestError
+from infrastructure.exchanges.bybit.bybit_execution_safety import (
+    BybitExecutionSafety,
+    BybitExecutionSafetyError,
+)
 
 
 class BybitExecutionExchange(Exchange):
@@ -26,6 +30,7 @@ class BybitExecutionExchange(Exchange):
         client: BybitRestClient | None = None,
         mapper: BybitExecutionMapper | None = None,
         instrument_filters: BybitInstrumentFilterCache | None = None,
+        safety: BybitExecutionSafety | None = None,
     ) -> None:
         self._api_key = api_key
         self._secret = secret
@@ -33,6 +38,11 @@ class BybitExecutionExchange(Exchange):
         self.client = client or BybitRestClient(api_key, secret, testnet=testnet)
         self.mapper = mapper or BybitExecutionMapper(category=category)
         self.instrument_filters = instrument_filters or BybitInstrumentFilterCache(self.client, category=category)
+        self.safety = safety or BybitExecutionSafety()
+        self._private_synced = False
+
+    def set_private_synced(self, synced: bool) -> None:
+        self._private_synced = bool(synced)
 
     async def place_order(self, order: Order) -> str:
         events = await self.submit_order_lifecycle(PlaceOrderCommand(order))
@@ -46,9 +56,14 @@ class BybitExecutionExchange(Exchange):
         order = command.order
         try:
             self.instrument_filters.normalize_order(order)
+            self.safety.validate(order, private_synced=self._private_synced)
             payload = self.mapper.to_create_order_payload(command)
+            if self.safety.dry_run:
+                dry_order_id = f"dry-run:{order.client_order_id or self.mapper.to_api_symbol(order.symbol)}"
+                order.id = dry_order_id
+                return [ExecutionEventFactory.accepted(ExecutionEventFactory.event_ts(command.ts), dry_order_id, order)]
             response = self.client.post("/v5/order/create", payload, request_name="order_create")
-        except (BybitInstrumentFilterError, BybitRestError, ValueError) as exc:
+        except (BybitInstrumentFilterError, BybitExecutionSafetyError, BybitRestError, ValueError) as exc:
             return [ExecutionEventFactory.rejected(ExecutionEventFactory.event_ts(command.ts), order, str(exc))]
 
         result = response.get("result") or {}
