@@ -7,8 +7,9 @@ from typing import Any
 import pandas as pd
 
 from core.types.commands import PlaceOrderCommand
-from core.types.domain_types import Order, Position
+from core.types.domain_types import Order, Position, Trade
 from core.types.enums import OrderSide, OrderStatus, OrderType, PositionSide
+from core.types.events import FillEvent, OrderAcceptedEvent, OrderCancelledEvent, OrderRejectedEvent, TradingEvent
 
 
 @dataclass(frozen=True)
@@ -93,6 +94,118 @@ class BybitExecutionMapper:
             meta={"bybit": dict(row)},
         )
 
+    def private_events_from_payload(self, payload: dict[str, Any]) -> list[TradingEvent]:
+        topic = str(payload.get("topic") or "")
+        rows = payload.get("data") or []
+        if not isinstance(rows, list):
+            return []
+        creation_time = payload.get("creationTime")
+        if topic.startswith("order"):
+            events: list[TradingEvent] = []
+            for row in rows:
+                event = self.order_event_from_stream_row(row, creation_time=creation_time)
+                if event is not None:
+                    events.append(event)
+            return events
+        if topic.startswith("execution"):
+            return [
+                self.fill_event_from_stream_row(row, creation_time=creation_time)
+                for row in rows
+                if self._float(row.get("execQty")) > 0
+            ]
+        return []
+
+    def private_positions_from_payload(self, payload: dict[str, Any]) -> list[Position]:
+        topic = str(payload.get("topic") or "")
+        if not topic.startswith("position"):
+            return []
+        rows = payload.get("data") or []
+        if not isinstance(rows, list):
+            return []
+        positions: list[Position] = []
+        for row in rows:
+            position = self.to_position(row)
+            if position is not None:
+                positions.append(position)
+        return positions
+
+    def order_event_from_stream_row(
+        self,
+        row: dict[str, Any],
+        *,
+        creation_time: Any = None,
+    ) -> TradingEvent | None:
+        status = self.to_order_status(str(row.get("orderStatus") or ""))
+        ts = self._timestamp(row.get("updatedTime") or row.get("createdTime") or creation_time)
+        order_id = str(row.get("orderId") or "")
+        client_order_id = str(row.get("orderLinkId") or "") or None
+        if status == OrderStatus.NEW:
+            order = self.order_from_stream_row(row)
+            return OrderAcceptedEvent(
+                ts=ts,
+                order_id=order_id,
+                client_order_id=client_order_id,
+                order=order,
+                event_id=f"{order_id}:accepted",
+            )
+        if status == OrderStatus.CANCELLED:
+            return OrderCancelledEvent(
+                ts=ts,
+                order_id=order_id,
+                client_order_id=client_order_id,
+                reason=str(row.get("cancelType") or "cancelled"),
+                event_id=f"{order_id}:cancelled",
+            )
+        if status == OrderStatus.REJECTED:
+            return OrderRejectedEvent(
+                ts=ts,
+                client_order_id=client_order_id,
+                reason=str(row.get("rejectReason") or "rejected"),
+                order=self.order_from_stream_row(row),
+                event_id=f"{client_order_id or order_id or 'unknown'}:rejected:{row.get('rejectReason') or 'rejected'}",
+            )
+        return None
+
+    def order_from_stream_row(self, row: dict[str, Any]) -> Order:
+        return Order(
+            symbol=self.from_api_symbol(str(row.get("symbol") or "")),
+            side=self.from_bybit_side(str(row.get("side") or "")) or OrderSide.BUY,
+            amount=self._float(row.get("qty") or row.get("orderQty")),
+            price=self._optional_float(row.get("price") or row.get("orderPrice")),
+            type=OrderType.LIMIT if str(row.get("orderType") or "").lower() == "limit" else OrderType.MARKET,
+            id=str(row.get("orderId") or "") or None,
+            client_order_id=str(row.get("orderLinkId") or "") or None,
+            meta={"bybit": dict(row)},
+        )
+
+    def fill_event_from_stream_row(
+        self,
+        row: dict[str, Any],
+        *,
+        creation_time: Any = None,
+    ) -> FillEvent:
+        order_id = str(row.get("orderId") or "")
+        exec_id = str(row.get("execId") or "")
+        trade = Trade(
+            order_id=order_id,
+            symbol=self.from_api_symbol(str(row.get("symbol") or "")),
+            side=self.from_bybit_side(str(row.get("side") or "")) or OrderSide.BUY,
+            amount=self._float(row.get("execQty")),
+            price=self._float(row.get("execPrice")),
+            fee=self._float(row.get("execFee")),
+            ts=self._timestamp(row.get("execTime") or creation_time),
+            meta={
+                "bybit": dict(row),
+                "exec_type": row.get("execType"),
+                "seq": row.get("seq"),
+            },
+        )
+        return FillEvent.from_trade(
+            trade,
+            client_order_id=str(row.get("orderLinkId") or "") or None,
+            event_id=f"{order_id}:fill:{exec_id or 'unknown'}",
+        )
+
     @staticmethod
     def to_bybit_side(side: OrderSide) -> str:
         return "Buy" if side == OrderSide.BUY else "Sell"
@@ -167,6 +280,12 @@ class BybitExecutionMapper:
         if value in (None, ""):
             return 0.0
         return float(value)
+
+    @classmethod
+    def _optional_float(cls, value: Any) -> float | None:
+        if value in (None, ""):
+            return None
+        return cls._float(value)
 
     @staticmethod
     def _timestamp(value: Any) -> pd.Timestamp:
