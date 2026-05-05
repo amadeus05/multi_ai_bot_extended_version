@@ -14,6 +14,7 @@ if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8")
 
 from application.backtest_replay_reporter import BacktestReplayReporter
+from application.backtest_position_closer import close_all_positions_at_market
 from application.backtest_trade_export import export_closed_trades_csv
 from application.inference.walk_forward_model import WalkForwardPredictionModel
 from application.training.data_loader import load_training_frame
@@ -156,7 +157,13 @@ async def main() -> None:
     final_ts = data_provider.last_timestamp
     final_close = data_provider.last_close
     if final_ts is not None and final_close is not None:
-        await engine.close_all_at_market({symbol: float(final_close)}, final_ts)
+        await close_all_positions_at_market(
+            engine=engine,
+            portfolio=portfolio,
+            exchange=exchange,
+            market_prices={symbol: float(final_close)},
+            ts=final_ts,
+        )
         reporter.flush_trade_events()
         reporter.record_equity(final_ts, {symbol: float(final_close)})
 

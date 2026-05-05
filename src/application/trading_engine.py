@@ -317,51 +317,6 @@ class TradingEngine:
     async def on_market_event(self, tick) -> None:
         await self.execute_commands(await self.process_event(MarketEvent(tick)))
 
-    async def close_all_at_market(self, market_prices: dict[str, float], ts) -> None:
-        from core.types.domain_types import Order
-        from core.types.enums import OrderSide
-
-        portfolio = self._deps["portfolio"]
-        exchange = self._deps["exchange"]
-        execution = self._deps["execution"]
-
-        for pos in list(portfolio.get_open_positions()):
-            ref_price = float(market_prices.get(pos.symbol, pos.entry_price))
-            side = OrderSide.SELL if pos.side.value == "long" else OrderSide.BUY
-            if hasattr(exchange, "market_fill_price"):
-                exit_price = exchange.market_fill_price(ref_price, side)
-            else:
-                exit_price = ref_price
-            order = Order(
-                symbol=pos.symbol,
-                side=side,
-                amount=pos.amount,
-                price=exit_price,
-                meta={
-                    ORDER_META_FILL_PRICE_FINAL: True,
-                    "reason": "FINAL",
-                    ENGINE_META_EXIT_REASON: "FINAL",
-                },
-            )
-            for event in await execution.execute(PlaceOrderCommand(order, reason="FINAL", ts=ts), exchange):
-                if isinstance(event, FillEvent):
-                    event = FillEvent(
-                        ts=ts,
-                        order_id=event.order_id,
-                        client_order_id=event.client_order_id,
-                        symbol=event.symbol,
-                        side=event.side,
-                        amount=event.amount,
-                        price=event.price,
-                        fee=event.fee,
-                        meta=event.meta,
-                        command_reason=event.command_reason,
-                        source_tick=event.source_tick,
-                        continue_with_entry=event.continue_with_entry,
-                        event_id=event.event_id,
-                    )
-                await self.process_event(event)
-
     async def run(self, symbols: list[str]) -> None:
         self._running = True
         for symbol in symbols:
