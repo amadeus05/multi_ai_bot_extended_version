@@ -7,7 +7,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 sys.path.insert(0, str(PROJECT_ROOT / "runners"))
 
-from application.inference.lightgbm_inference_model import load_default_lightgbm_model
+from application.inference.model_factory import load_inference_model
 from application.trading_state_restorer import ExchangeSnapshotStateRestorer
 from core.config.loader import load_live_settings, load_storage_settings
 from domain.execution.execution_service import ExecutionService
@@ -41,7 +41,7 @@ def _env_bool(name: str, default: bool) -> bool:
 async def main() -> None:
     settings = load_live_settings(overrides={"testnet": True})
     trading = settings.trading
-    model = load_default_lightgbm_model(cwd=Path.cwd(), model_path_cfg=trading.model_path, required_bars=250)
+    model = load_inference_model(cwd=Path.cwd(), trading=trading)
     exchange = BybitExecutionExchange(
         settings.api_key,
         settings.api_secret,

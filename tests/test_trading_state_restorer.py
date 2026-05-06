@@ -163,8 +163,12 @@ class FakeProvider:
         assert self.calls == ["restore", "warmup"]
         self.calls.append("subscribe")
 
-    async def run(self) -> None:
+    def subscribe_exit_checks(self, symbol: str, callback) -> None:
         assert self.calls == ["restore", "warmup", "subscribe"]
+        self.calls.append("subscribe_exit_checks")
+
+    async def run(self) -> None:
+        assert self.calls == ["restore", "warmup", "subscribe", "subscribe_exit_checks"]
         self.calls.append("run")
 
 
@@ -190,7 +194,7 @@ def test_realtime_orchestrator_restores_before_warmup_and_subscribe() -> None:
 
     asyncio.run(orchestrator.run())
 
-    assert calls == ["restore", "warmup", "subscribe", "run"]
+    assert calls == ["restore", "warmup", "subscribe", "subscribe_exit_checks", "run"]
 
 
 class BlockingProvider:
@@ -198,6 +202,9 @@ class BlockingProvider:
         return pd.DataFrame([{"timestamp": pd.Timestamp("2024-01-01")}])
 
     def subscribe(self, symbol: str, callback) -> None:
+        return None
+
+    def subscribe_exit_checks(self, symbol: str, callback) -> None:
         return None
 
     async def run(self) -> None:

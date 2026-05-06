@@ -247,6 +247,10 @@ class WebSocketProvider(DataProvider):
                 ask=event.close_price,
                 price=event.close_price,
                 volume=event.volume,
+                open=event.open_price,
+                high=event.high_price,
+                low=event.low_price,
+                close=event.close_price,
             )
             callbacks = list(self._subs.get(symbol, []))
             for callback in callbacks:

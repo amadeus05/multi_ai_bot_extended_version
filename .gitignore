@@ -48,6 +48,8 @@ models/backups/
 *.pkl
 *.joblib
 *.pickle
+*.pt
+*.pth
 
 # Данные (сырые датасеты обычно не коммитят)
 data/raw/

@@ -8,7 +8,7 @@ from core.interfaces.notifier import Notifier
 from core.types.commands import PlaceOrderCommand
 from core.types.domain_types import Order, Position, Tick
 from core.types.enums import OrderSide, PositionSide
-from core.types.events import FillEvent, MarketEvent
+from core.types.events import ExitCheckEvent, FillEvent, MarketEvent
 from core.types.notifications import SignalNotification, SystemNotification, TradeExitNotification
 from core.types.order_flags import ORDER_META_FILL_PRICE_FINAL
 from domain.portfolio.portfolio_manager import PortfolioManager
@@ -260,6 +260,81 @@ def test_exit_command_for_short_position_uses_buy_side() -> None:
     assert len(commands) == 1
     assert commands[0].order.side == OrderSide.BUY
     assert commands[0].order.amount == pytest.approx(2.0)
+
+
+def test_exit_check_event_checks_exit_without_entry_scan() -> None:
+    data = FakeDataProvider()
+    exit_manager = FakeExitManager(price=94.0, reason="SL")
+    portfolio = PortfolioManager(
+        cash={"USDT": 1000.0},
+        positions=[
+            Position(
+                "BTC/USDT",
+                PositionSide.LONG,
+                amount=1.5,
+                entry_price=100.0,
+                meta={"barrier_stop_pct": 0.01, "barrier_take_pct": 0.02},
+            )
+        ],
+    )
+    tick = Tick(
+        symbol="BTC/USDT",
+        ts=pd.Timestamp("2024-01-01T00:01:00"),
+        bid=94.0,
+        ask=94.0,
+        price=94.0,
+        volume=1.0,
+        open=100.0,
+        high=100.0,
+        low=94.0,
+        close=94.0,
+    )
+    engine = make_engine(portfolio=portfolio, data=data, exit_manager=exit_manager)
+
+    commands = asyncio.run(engine.process_event(ExitCheckEvent(tick)))
+
+    assert data.warmup_calls == []
+    assert len(commands) == 1
+    assert commands[0].reason == "SL"
+    assert commands[0].continue_with_entry is False
+    assert commands[0].source_tick is None
+    assert exit_manager.calls[-1]["next_high"] == pytest.approx(100.0)
+    assert exit_manager.calls[-1]["next_low"] == pytest.approx(94.0)
+
+
+def test_exit_check_event_without_exit_does_not_scan_entry() -> None:
+    data = FakeDataProvider()
+    exit_manager = FakeExitManager(price=None, reason=None)
+    portfolio = PortfolioManager(
+        cash={"USDT": 1000.0},
+        positions=[
+            Position(
+                "BTC/USDT",
+                PositionSide.LONG,
+                amount=1.5,
+                entry_price=100.0,
+                meta={"barrier_stop_pct": 0.01, "barrier_take_pct": 0.02},
+            )
+        ],
+    )
+    tick = Tick(
+        symbol="BTC/USDT",
+        ts=pd.Timestamp("2024-01-01T00:01:00"),
+        bid=100.0,
+        ask=100.0,
+        price=100.0,
+        volume=1.0,
+        open=100.0,
+        high=100.5,
+        low=99.5,
+        close=100.0,
+    )
+    engine = make_engine(portfolio=portfolio, data=data, exit_manager=exit_manager)
+
+    commands = asyncio.run(engine.process_event(ExitCheckEvent(tick)))
+
+    assert commands == []
+    assert data.warmup_calls == []
 
 
 def test_exit_fill_with_continue_entry_closes_position_then_builds_new_entry_command() -> None:
