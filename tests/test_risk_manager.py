@@ -120,6 +120,34 @@ def test_risk_manager_blocks_entries_after_daily_stop_loss_limit() -> None:
     assert manager.check(make_order("ETH/USDT"), portfolio, exchange=object()) is None
 
 
+def test_risk_manager_treats_zero_daily_stop_loss_limit_as_disabled() -> None:
+    manager = AdaptiveRiskManager(make_profile(max_sl_per_day=0))
+    portfolio = PortfolioManager(cash={"USDT": 1000.0})
+    ts = pd.Timestamp("2024-01-01T00:00:00")
+
+    manager.set_current_bar(ts)
+    manager.register_trade_result("BTC/USDT", pnl=-10.0, bar_ts=ts, stop_loss_hit=True)
+
+    assert manager.check(make_order("ETH/USDT"), portfolio, exchange=object()) is not None
+
+
+def test_risk_manager_ignores_zero_reduced_risk_after_loss_streak() -> None:
+    manager = AdaptiveRiskManager(
+        make_profile(
+            risk_per_trade=0.01,
+            reduce_risk_after_consecutive_losses=1,
+            reduced_risk_per_trade=0.0,
+        )
+    )
+    portfolio = PortfolioManager(cash={"USDT": 1000.0})
+
+    manager.register_trade_result("BTC/USDT", pnl=-10.0, bar_ts=pd.Timestamp("2024-01-01T00:00:00"))
+    checked = manager.check(make_order("ETH/USDT"), portfolio, exchange=object())
+
+    assert checked is not None
+    assert checked.amount == pytest.approx(5.0)
+
+
 def test_risk_manager_logs_risk_reduction_and_restore(capsys) -> None:
     manager = AdaptiveRiskManager(
         make_profile(
