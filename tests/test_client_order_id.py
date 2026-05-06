@@ -44,6 +44,15 @@ def test_deterministic_client_order_id_is_stable_for_same_intent() -> None:
     assert len(first) <= MAX_CLIENT_ORDER_ID_LEN
 
 
+def test_deterministic_client_order_id_ignores_runtime_signal_number() -> None:
+    first = make_command()
+    second = make_command()
+    first.order.meta["signal_number"] = 1
+    second.order.meta["signal_number"] = 999
+
+    assert deterministic_client_order_id(first) == deterministic_client_order_id(second)
+
+
 def test_deterministic_client_order_id_changes_for_different_intent() -> None:
     first = deterministic_client_order_id(make_command(side=OrderSide.BUY))
     second = deterministic_client_order_id(make_command(side=OrderSide.SELL))

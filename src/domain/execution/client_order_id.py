@@ -68,7 +68,6 @@ def _fingerprint(command: PlaceOrderCommand) -> str:
 
 def _stable_meta(meta: dict[str, Any]) -> dict[str, Any]:
     stable_keys = (
-        "signal_number",
         "p_long",
         "p_short",
         "score",
