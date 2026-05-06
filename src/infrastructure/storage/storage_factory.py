@@ -3,9 +3,12 @@ from __future__ import annotations
 from core.config.storage_config import StorageSettings
 from core.interfaces.event_repository import EventRepository
 from application.event_journal import EventJournal
+from domain.execution.order_intent_store import OrderIntentStore
 from infrastructure.repositories.sqlite_event_repository import SQLiteEventRepository
+from infrastructure.repositories.sqlite_order_intent_store import SQLiteOrderIntentStore
 from infrastructure.repositories.sqlite_trading_read_model_repository import SQLiteTradingReadModelRepository
 from infrastructure.repositories.supabase_event_repository import SupabaseEventRepository
+from infrastructure.repositories.supabase_order_intent_store import SupabaseOrderIntentStore
 from infrastructure.repositories.supabase_trading_read_model_repository import SupabaseTradingReadModelRepository
 from infrastructure.storage.sqlite_connection import SQLiteConnection
 from infrastructure.storage.supabase_connection import SupabaseConnection
@@ -54,3 +57,20 @@ def build_event_journal(settings: StorageSettings) -> EventJournal | None:
         source=settings.journal_source,
         read_model_repository=read_model_repository,
     )
+
+
+def build_order_intent_store(settings: StorageSettings) -> OrderIntentStore:
+    driver = settings.driver.strip().lower()
+    if driver == "sqlite":
+        store = SQLiteOrderIntentStore(SQLiteConnection(settings.sqlite_path))
+        store.ensure_schema()
+        return store
+    if driver == "supabase":
+        return SupabaseOrderIntentStore(
+            SupabaseConnection(
+                url=settings.supabase_url,
+                service_key=settings.supabase_service_key,
+                schema=settings.supabase_schema,
+            )
+        )
+    raise ValueError(f"Unsupported storage driver: {settings.driver!r}")
