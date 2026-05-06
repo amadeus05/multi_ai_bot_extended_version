@@ -17,8 +17,8 @@ from application.backtest_replay_reporter import BacktestReplayReporter
 from application.backtest_position_closer import close_all_positions_at_market
 from application.backtest_trade_export import export_closed_trades_csv
 from application.inference.walk_forward_model import WalkForwardPredictionModel
-from application.training.data_loader import load_training_frame
-from application.training.walk_forward_pipeline import WalkForwardPipeline
+from application.training.common.data_loader import load_training_frame
+from application.training.lightgbm.walk_forward_pipeline import WalkForwardPipeline
 from application.trading_runtime_loop import TradingRuntimeLoop
 from application.trading_runtime_factory import build_trading_engine
 from core.config.loader import load_backtest_settings

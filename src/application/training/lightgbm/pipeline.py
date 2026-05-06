@@ -7,18 +7,18 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import roc_auc_score
 
-from application.training.artifacts import save_artifacts
-from application.training.data_loader import load_training_frame
-from application.training.feature_clipping import apply_feature_clip_bounds, build_feature_clip_bounds
-from application.training.feature_selection import (
+from application.training.common.data_loader import load_training_frame
+from application.training.common.feature_selection import (
     filter_feature_columns_to_allowlist,
     resolve_train_feature_allowlist,
     select_feature_columns,
 )
-from application.training.lgbm_trainer import build_model, fit_model_with_internal_eval
-from application.training.metrics import evaluate_model
-from application.training.splits import build_timestamp_splits
-from application.training.weights import compute_sample_weights
+from application.training.common.metrics import evaluate_model
+from application.training.common.splits import build_timestamp_splits
+from application.training.common.weights import compute_sample_weights
+from application.training.lightgbm.artifacts import save_artifacts
+from application.training.lightgbm.feature_clipping import apply_feature_clip_bounds, build_feature_clip_bounds
+from application.training.lightgbm.trainer import build_model, fit_model_with_internal_eval
 from core.config.train_config import TrainConfig
 
 logger = logging.getLogger(__name__)

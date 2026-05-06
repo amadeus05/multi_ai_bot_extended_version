@@ -6,7 +6,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from application.training import TrainPipeline
-from application.training.artifacts import (
+from application.training.lightgbm.artifacts import (
     build_current_run_summary_lines,
     build_recent_runs_table_lines,
     load_train_history,

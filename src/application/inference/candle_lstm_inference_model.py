@@ -6,9 +6,9 @@ import numpy as np
 import pandas as pd
 import torch
 
-from application.training.candle_lstm_features import build_candle_lstm_feature_frame
-from application.training.lstm_model import LSTMClassifier
-from application.training.sequence_dataset import SequenceStandardizer
+from application.training.candle_lstm.features import build_candle_lstm_feature_frame
+from application.training.candle_lstm.model import LSTMClassifier
+from application.training.common.sequence_dataset import SequenceStandardizer
 from core.interfaces.model import Model
 
 

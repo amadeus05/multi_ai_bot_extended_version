@@ -12,12 +12,12 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader, Subset
 
-from application.training.candle_lstm_features import CANDLE_LSTM_FEATURE_COLUMNS, build_candle_lstm_feature_frame
-from application.training.data_loader import load_training_frame
-from application.training.lstm_model import LSTMClassifier
-from application.training.metrics import evaluate_model
-from application.training.sequence_dataset import SequenceDataset, SequenceStandardizer, build_history_by_symbol
-from application.training.splits import build_timestamp_splits
+from application.training.candle_lstm.features import CANDLE_LSTM_FEATURE_COLUMNS, build_candle_lstm_feature_frame
+from application.training.candle_lstm.model import LSTMClassifier
+from application.training.common.data_loader import load_training_frame
+from application.training.common.metrics import evaluate_model
+from application.training.common.sequence_dataset import SequenceDataset, SequenceStandardizer, build_history_by_symbol
+from application.training.common.splits import build_timestamp_splits
 from core.config.base import BaseConfig
 from core.config.train_config import TrainConfig
 
