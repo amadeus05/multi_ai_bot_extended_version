@@ -18,11 +18,19 @@ logger = logging.getLogger(__name__)
 
 
 class WebSocketProvider(DataProvider):
-    def __init__(self, ws_url: str, timeframe: str = "1h", htf_timeframe: str = "4h") -> None:
+    def __init__(
+        self,
+        ws_url: str,
+        timeframe: str = "1h",
+        htf_timeframe: str = "4h",
+        exit_timeframe: str | None = "1m",
+    ) -> None:
         self._ws_url = ws_url
         self._timeframe = timeframe
         self._htf_timeframe = htf_timeframe
+        self._exit_timeframe = exit_timeframe
         self._subs: dict[str, list[Callable[[Tick], Awaitable[None]]]] = defaultdict(list)
+        self._exit_subs: dict[str, list[Callable[[Tick], Awaitable[None]]]] = defaultdict(list)
         self._mapper = BybitMapper()
         self._service = BybitService()
         self._feature_builder = MasterFeatureBuilder()
@@ -34,6 +42,8 @@ class WebSocketProvider(DataProvider):
         self._funding: dict[str, pd.DataFrame] = {}
         self._premium_index: dict[str, pd.DataFrame] = {}
         self._api_to_symbol: dict[str, str] = {}
+        self._main_topics: dict[str, str] = {}
+        self._exit_topics: dict[str, str] = {}
         self._include_open_interest = BaseConfig.env_str("INCLUDE_OPEN_INTEREST", "1") == "1"
         self._include_funding = BaseConfig.env_str("INCLUDE_FUNDING", "1") == "1"
         self._include_premium_index = BaseConfig.env_str("INCLUDE_PREMIUM_INDEX", "0") == "1"
@@ -209,12 +219,22 @@ class WebSocketProvider(DataProvider):
 
     def subscribe(self, symbol: str, callback: Callable[[Tick], Awaitable[None]]) -> None:
         normalized = self._normalize_symbol(symbol)
+        api_symbol = self._to_api_symbol(normalized)
+        main_topic = f"kline.{self._mapper.to_interval(self._timeframe)}.{api_symbol}"
         self._subs[normalized].append(callback)
-        self._api_to_symbol[self._to_api_symbol(normalized)] = normalized
+        self._api_to_symbol[api_symbol] = normalized
+        self._main_topics[main_topic] = normalized
+
+    def subscribe_exit_checks(self, symbol: str, callback: Callable[[Tick], Awaitable[None]]) -> None:
+        normalized = self._normalize_symbol(symbol)
+        self._exit_subs[normalized].append(callback)
+        if self._exit_timeframe and self._exit_timeframe != self._timeframe:
+            api_symbol = self._to_api_symbol(normalized)
+            exit_topic = f"kline.{self._mapper.to_interval(self._exit_timeframe)}.{api_symbol}"
+            self._exit_topics[exit_topic] = normalized
 
     async def run(self) -> None:
-        interval = self._mapper.to_interval(self._timeframe)
-        topics = {f"kline.{interval}.{api_symbol}" for api_symbol in self._api_to_symbol}
+        topics = set(self._main_topics) | set(self._exit_topics)
         self._stream.sync_topics(topics)
         self._stream.start()
         if not self._stream.wait_until_connected(timeout=15.0):
@@ -227,8 +247,28 @@ class WebSocketProvider(DataProvider):
                 event = await loop.run_in_executor(None, self._stream.get_event, 1.0)
             except queue.Empty:
                 continue
-            symbol = self._api_to_symbol.get(event.symbol)
+            is_exit_check_topic = event.topic in self._exit_topics
+            symbol = self._exit_topics.get(event.topic) if is_exit_check_topic else self._main_topics.get(event.topic)
             if symbol is None:
+                continue
+            tick = Tick(
+                symbol=symbol,
+                ts=pd.to_datetime(event.end_ms, unit="ms", utc=True).tz_convert(None),
+                bid=event.close_price,
+                ask=event.close_price,
+                price=event.close_price,
+                volume=event.volume,
+                open=event.open_price,
+                high=event.high_price,
+                low=event.low_price,
+                close=event.close_price,
+            )
+            if is_exit_check_topic:
+                callbacks = list(self._exit_subs.get(symbol, []))
+                for callback in callbacks:
+                    result = callback(tick)
+                    if asyncio.iscoroutine(result):
+                        await result
                 continue
             row = self._event_to_row(symbol, event)
             current = self._history.get(symbol, pd.DataFrame())
@@ -240,14 +280,6 @@ class WebSocketProvider(DataProvider):
             start_ms = end_ms - self._service.get_timeframe_ms(self._timeframe) * 5
             self._sync_context(symbol, start_ms, end_ms)
             self._sync_htf(symbol, end_ms - self._service.get_timeframe_ms(self._htf_timeframe) * 2, end_ms)
-            tick = Tick(
-                symbol=symbol,
-                ts=pd.to_datetime(event.end_ms, unit="ms", utc=True).tz_convert(None),
-                bid=event.close_price,
-                ask=event.close_price,
-                price=event.close_price,
-                volume=event.volume,
-            )
             callbacks = list(self._subs.get(symbol, []))
             for callback in callbacks:
                 result = callback(tick)

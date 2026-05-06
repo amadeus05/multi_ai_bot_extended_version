@@ -15,6 +15,10 @@ class DataProvider(ABC):
     def subscribe(self, symbol: str, callback: Callable[[Tick], Awaitable[None]]) -> None:
         raise NotImplementedError
 
+    def subscribe_exit_checks(self, symbol: str, callback: Callable[[Tick], Awaitable[None]]) -> None:
+        """Optional faster market-data stream for TP/SL checks."""
+        return None
+
     @abstractmethod
     async def run(self) -> None:
         raise NotImplementedError

@@ -23,6 +23,21 @@ class MarketEvent:
 
 
 @dataclass(frozen=True)
+class ExitCheckEvent:
+    """Market-data event used only for TP/SL checks."""
+
+    tick: Tick
+
+    @property
+    def symbol(self) -> str:
+        return self.tick.symbol
+
+    @property
+    def ts(self) -> pd.Timestamp:
+        return self.tick.ts
+
+
+@dataclass(frozen=True)
 class OrderAcceptedEvent:
     ts: pd.Timestamp
     order_id: str
@@ -109,6 +124,7 @@ class FillEvent:
 
 TradingEvent = Union[
     MarketEvent,
+    ExitCheckEvent,
     OrderAcceptedEvent,
     OrderRejectedEvent,
     OrderCancelledEvent,

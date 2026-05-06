@@ -10,6 +10,7 @@ from core.types.commands import CancelOrderCommand, PlaceOrderCommand, TradingCo
 from core.types.domain_types import Order
 from core.types.enums import OrderSide
 from core.types.events import (
+    ExitCheckEvent,
     FillEvent,
     MarketEvent,
     OrderAcceptedEvent,
@@ -273,7 +274,14 @@ class TradingEngine:
             return exit_commands
         return await self._commands_for_entry_tick(tick)
 
+    async def _commands_for_exit_check_event(self, event: ExitCheckEvent) -> list[TradingCommand]:
+        tick = event.tick
+        self._prepare_tick_context(tick)
+        return await self._commands_for_exit_tick(tick, continue_with_entry=False)
+
     async def process_event(self, event: TradingEvent) -> list[TradingCommand]:
+        if isinstance(event, ExitCheckEvent):
+            return await self._commands_for_exit_check_event(event)
         if isinstance(event, MarketEvent):
             return await self._commands_for_market_event(event)
         if isinstance(event, (OrderAcceptedEvent, OrderCancelledEvent, OrderRejectedEvent, FillEvent)):

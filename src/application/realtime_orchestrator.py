@@ -13,7 +13,7 @@ from core.interfaces.data_provider import DataProvider
 from core.interfaces.model import Model
 from core.interfaces.notifier import Notifier
 from core.types.domain_types import Tick
-from core.types.events import MarketEvent, TradingEvent
+from core.types.events import ExitCheckEvent, MarketEvent, TradingEvent
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +74,9 @@ class RealtimeOrchestrator:
     async def _publish_tick(self, tick: Tick) -> None:
         await self._runtime.publish(MarketEvent(tick))
 
+    async def _publish_exit_check_tick(self, tick: Tick) -> None:
+        await self._runtime.publish(ExitCheckEvent(tick))
+
     async def _run_execution_event_source(self) -> None:
         if self._execution_event_source is None:
             return
@@ -85,6 +88,7 @@ class RealtimeOrchestrator:
         await self.bootstrap()
         for symbol in self._symbols:
             self._data_provider.subscribe(symbol, self._publish_tick)
+            self._data_provider.subscribe_exit_checks(symbol, self._publish_exit_check_tick)
 
         runtime_task = self._runtime.start()
         provider_task = asyncio.create_task(self._data_provider.run())
