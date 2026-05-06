@@ -3,7 +3,7 @@ from typing import Optional
 from core.types.domain_types import Order, Tick
 from core.types.enums import OrderSide
 from domain.portfolio.portfolio_manager import PortfolioManager
-from domain.strategy.signal_resolver import resolve_directional_signal
+from domain.strategy.signal_resolver import build_entry_score, resolve_directional_signal
 from domain.strategy.strategy_engine import Strategy
 
 
@@ -29,7 +29,7 @@ class BacktestParitySignalStrategy(Strategy):
     def on_prediction(self, tick: Tick, prediction: dict, portfolio: PortfolioManager) -> Optional[Order]:
         p_long = float(prediction.get("p_long", 0.5))
         p_short = float(prediction.get("p_short", 0.5))
-        signal, _, _ = resolve_directional_signal(
+        signal, direction_prob, signal_gap = resolve_directional_signal(
             p_long, 
             p_short,
             self._directional_proba_threshold,
@@ -44,8 +44,9 @@ class BacktestParitySignalStrategy(Strategy):
         if take_pct is not None:
             meta["barrier_take_pct"] = float(take_pct)
         
-        # Add score
-        meta["score"] = float(prediction.get("score", max(p_long, p_short)))
+        meta["score"] = build_entry_score(direction_prob, signal_gap, self._directional_proba_threshold)
+        meta["direction_prob"] = direction_prob
+        meta["signal_gap"] = signal_gap
         meta["directional_proba_threshold"] = self._directional_proba_threshold
         meta["min_signal_gap"] = self._min_signal_gap
 

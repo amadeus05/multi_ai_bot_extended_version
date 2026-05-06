@@ -1,6 +1,16 @@
 import math
 
 
+def build_entry_score(direction_prob: float, signal_gap: float, directional_proba_threshold: float) -> float:
+    direction_prob = float(direction_prob)
+    signal_gap = float(signal_gap)
+    threshold = float(directional_proba_threshold)
+    if not math.isfinite(direction_prob) or not math.isfinite(signal_gap) or not math.isfinite(threshold):
+        return 0.0
+    edge = max(0.0, direction_prob - threshold)
+    return float(edge * 10.0 + signal_gap)
+
+
 def resolve_directional_signal(
     p_long: float,
     p_short: float,

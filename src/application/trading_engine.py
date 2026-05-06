@@ -252,14 +252,10 @@ class TradingEngine:
         raw_order.meta = raw_order.meta or {}
         p_long = float(prediction.get("p_long", 0.5))
         p_short = float(prediction.get("p_short", 0.5))
-        raw_order.meta.update(
-            {
-                "p_long": p_long,
-                "p_short": p_short,
-                "signal_gap": abs(p_long - p_short),
-                "direction_prob": max(p_long, p_short),
-            }
-        )
+        raw_order.meta.setdefault("p_long", p_long)
+        raw_order.meta.setdefault("p_short", p_short)
+        raw_order.meta.setdefault("signal_gap", abs(p_long - p_short))
+        raw_order.meta.setdefault("direction_prob", max(p_long, p_short))
         safe_order = risk.check(raw_order, portfolio, exchange)
         if safe_order is None:
             return []
