@@ -12,15 +12,25 @@ from core.config.loader import load_live_settings, load_storage_settings
 from domain.execution.execution_service import ExecutionService
 from domain.portfolio.portfolio_manager import PortfolioManager
 from infrastructure.exchanges.bybit.bybit_execution_exchange import BybitExecutionExchange
+from infrastructure.exchanges.bybit.bybit_execution_safety import BybitExecutionSafety
 from infrastructure.storage.storage_factory import build_order_intent_store
 from realtime_common import build_realtime_orchestrator
+
+
+def build_live_safety() -> BybitExecutionSafety:
+    return BybitExecutionSafety(require_private_sync=True)
 
 
 async def main() -> None:
     settings = load_live_settings()
     trading = settings.trading
     model = load_default_lightgbm_model(cwd=Path.cwd(), model_path_cfg=trading.model_path, required_bars=250)
-    exchange = BybitExecutionExchange(settings.api_key, settings.api_secret, testnet=settings.testnet)
+    exchange = BybitExecutionExchange(
+        settings.api_key,
+        settings.api_secret,
+        testnet=settings.testnet,
+        safety=build_live_safety(),
+    )
     portfolio = PortfolioManager(cash={"USDT": float(trading.initial_capital)})
     order_intent_store = build_order_intent_store(load_storage_settings())
     execution = ExecutionService(order_intent_store=order_intent_store)

@@ -9,6 +9,7 @@ from typing import Any
 from core.types.commands import CancelOrderCommand, PlaceOrderCommand
 from core.interfaces.exchange import Exchange
 from core.types.domain_types import Order, Position
+from core.types.enums import OrderStatus
 from core.types.events import TradingEvent
 from core.types.execution_event_factory import ExecutionEventFactory
 from infrastructure.exchanges.bybit.bybit_execution_mapper import BybitExecutionMapper
@@ -217,7 +218,7 @@ class BybitExecutionExchange(Exchange):
             response = self.client.get("/v5/order/history", params, request_name="order_history")
             rows = (response.get("result") or {}).get("list") or []
         if not rows:
-            return {"status": "rejected", "reason": "Bybit order not found", "order_id": order_id}
+            return {"status": OrderStatus.NEW, "reason": "Bybit order not found", "order_id": order_id}
         return self.mapper.to_status(rows[0])
 
     def _symbol_params(self, symbols: list[str] | tuple[str, ...] | None = None) -> list[dict[str, Any]]:

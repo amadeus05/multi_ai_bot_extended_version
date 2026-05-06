@@ -222,6 +222,21 @@ def test_get_order_status_uses_realtime_then_history_fallback() -> None:
     assert [call[0] for call in client.gets] == ["/v5/order/realtime", "/v5/order/history"]
 
 
+def test_get_order_status_not_found_is_not_terminal_rejection() -> None:
+    client = FakeBybitClient()
+    client.get_responses = [
+        {"retCode": 0, "result": {"list": []}},
+        {"retCode": 0, "result": {"list": []}},
+    ]
+    exchange = make_exchange(client)
+
+    status = asyncio.run(exchange.get_order_status("link:client-1"))
+
+    assert status["status"] == OrderStatus.NEW
+    assert status["reason"] == "Bybit order not found"
+    assert [call[0] for call in client.gets] == ["/v5/order/realtime", "/v5/order/history"]
+
+
 def test_cancel_order_lifecycle_emits_cancelled_event() -> None:
     client = FakeBybitClient()
     exchange = make_exchange(client)
