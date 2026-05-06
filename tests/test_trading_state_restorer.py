@@ -7,6 +7,7 @@ from application.trading_state_restorer import ExchangeSnapshotStateRestorer, Re
 from core.types.domain_types import Position
 from core.types.enums import OrderSide, PositionSide
 from core.types.events import FillEvent
+from domain.execution.order_intent_store import InMemoryOrderIntentStore
 from domain.portfolio.portfolio_manager import PortfolioManager
 
 
@@ -28,7 +29,7 @@ class FakeSnapshotExchange:
             {
                 "balance": 4321.0,
                 "positions": [Position("ETH/USDT", PositionSide.SHORT, amount=1.5, entry_price=2000.0)],
-                "open_orders": [{"orderId": "open-1"}],
+                "open_orders": [{"orderId": "open-1", "orderLinkId": "client-1"}],
                 "recent_executions": [{"execId": "exec-1"}, {"execId": "exec-2"}],
             },
         )()
@@ -66,6 +67,57 @@ def test_exchange_snapshot_restorer_prefers_snapshot_when_available() -> None:
     assert portfolio.cash["USDT"] == 4321.0
     assert portfolio.positions[0].symbol == "ETH/USDT"
     assert portfolio.positions[0].side == PositionSide.SHORT
+
+
+def test_exchange_snapshot_restorer_reconciles_open_orders_to_intent_store() -> None:
+    portfolio = PortfolioManager(cash={"USDT": 100.0})
+    store = InMemoryOrderIntentStore()
+    order = type("Order", (), {"client_order_id": "client-1", "symbol": "ETH/USDT", "side": OrderSide.SELL})()
+    command = type("Command", (), {"order": order, "reason": "ENTRY", "ts": pd.Timestamp("2024-01-01T00:00:00")})()
+    asyncio.run(store.record_pending(command))
+    restorer = ExchangeSnapshotStateRestorer(
+        exchange=FakeSnapshotExchange(),
+        portfolio=portfolio,
+        order_intent_store=store,
+    )
+
+    asyncio.run(restorer.restore_trading_state())
+
+    intent = asyncio.run(store.get("client-1"))
+    assert intent.status == "accepted"
+    assert intent.order_id == "open-1"
+
+
+class SnapshotWithUnlinkedOpenOrders:
+    async def restore_snapshot(self, *, quote_asset: str = "USDT"):
+        return type(
+            "Snapshot",
+            (),
+            {
+                "balance": 100.0,
+                "positions": [],
+                "open_orders": [
+                    {"orderId": "missing-link"},
+                    {"orderLinkId": "missing-order-id"},
+                ],
+                "recent_executions": [],
+            },
+        )()
+
+
+def test_exchange_snapshot_restorer_ignores_open_orders_without_order_link_id() -> None:
+    portfolio = PortfolioManager(cash={"USDT": 100.0})
+    store = InMemoryOrderIntentStore()
+    restorer = ExchangeSnapshotStateRestorer(
+        exchange=SnapshotWithUnlinkedOpenOrders(),
+        portfolio=portfolio,
+        order_intent_store=store,
+    )
+
+    result = asyncio.run(restorer.restore_trading_state())
+
+    assert result.open_orders_count == 2
+    assert asyncio.run(store.get("missing-order-id")) is None
 
 
 def test_exchange_snapshot_restorer_fails_fast_when_snapshot_fails() -> None:

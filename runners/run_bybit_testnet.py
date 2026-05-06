@@ -49,7 +49,8 @@ async def main() -> None:
         safety=build_testnet_safety_from_env(trading.symbols),
     )
     portfolio = PortfolioManager(cash={"USDT": float(trading.initial_capital)})
-    execution = ExecutionService(order_intent_store=build_order_intent_store(load_storage_settings()))
+    order_intent_store = build_order_intent_store(load_storage_settings())
+    execution = ExecutionService(order_intent_store=order_intent_store)
     orchestrator = build_realtime_orchestrator(
         settings=settings,
         exchange=exchange,
@@ -58,7 +59,11 @@ async def main() -> None:
         execution=execution,
     )
     orchestrator.set_state_restorer(
-        ExchangeSnapshotStateRestorer(exchange=exchange, portfolio=portfolio)
+        ExchangeSnapshotStateRestorer(
+            exchange=exchange,
+            portfolio=portfolio,
+            order_intent_store=order_intent_store,
+        )
     )
     orchestrator.set_execution_event_source(exchange.stream_private_events)
     await orchestrator.run()

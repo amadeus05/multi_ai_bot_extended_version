@@ -22,7 +22,8 @@ async def main() -> None:
     model = load_default_lightgbm_model(cwd=Path.cwd(), model_path_cfg=trading.model_path, required_bars=250)
     exchange = BybitExecutionExchange(settings.api_key, settings.api_secret, testnet=settings.testnet)
     portfolio = PortfolioManager(cash={"USDT": float(trading.initial_capital)})
-    execution = ExecutionService(order_intent_store=build_order_intent_store(load_storage_settings()))
+    order_intent_store = build_order_intent_store(load_storage_settings())
+    execution = ExecutionService(order_intent_store=order_intent_store)
     orchestrator = build_realtime_orchestrator(
         settings=settings,
         exchange=exchange,
@@ -31,7 +32,11 @@ async def main() -> None:
         execution=execution,
     )
     orchestrator.set_state_restorer(
-        ExchangeSnapshotStateRestorer(exchange=exchange, portfolio=portfolio)
+        ExchangeSnapshotStateRestorer(
+            exchange=exchange,
+            portfolio=portfolio,
+            order_intent_store=order_intent_store,
+        )
     )
     orchestrator.set_execution_event_source(exchange.stream_private_events)
     await orchestrator.run()

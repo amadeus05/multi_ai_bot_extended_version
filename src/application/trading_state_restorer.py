@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from core.interfaces.exchange import Exchange
+from domain.execution.order_intent_store import OrderIntentStore
 from domain.portfolio.portfolio_manager import PortfolioManager
 
 
@@ -45,10 +46,12 @@ class ExchangeSnapshotStateRestorer:
         exchange: Exchange,
         portfolio: PortfolioManager,
         quote_asset: str = "USDT",
+        order_intent_store: OrderIntentStore | None = None,
     ) -> None:
         self._exchange = exchange
         self._portfolio = portfolio
         self._quote_asset = quote_asset
+        self._order_intent_store = order_intent_store
 
     async def restore_trading_state(self) -> RestoreResult:
         try:
@@ -69,6 +72,8 @@ class ExchangeSnapshotStateRestorer:
 
         self._portfolio.cash[self._quote_asset] = float(balance)
         self._portfolio.positions = list(positions)
+        if self._order_intent_store is not None and "snapshot" in locals():
+            await self._reconcile_open_orders(snapshot.open_orders)
         result = RestoreResult(
             restored=True,
             source="exchange_snapshot",
@@ -87,3 +92,11 @@ class ExchangeSnapshotStateRestorer:
             float(balance),
         )
         return result
+
+    async def _reconcile_open_orders(self, open_orders: list[dict]) -> None:
+        for row in open_orders:
+            client_order_id = str(row.get("orderLinkId") or "")
+            order_id = str(row.get("orderId") or "")
+            if not client_order_id or not order_id:
+                continue
+            await self._order_intent_store.mark_accepted(client_order_id, order_id)
