@@ -38,8 +38,28 @@ class SupabaseOrderIntentStore:
             {"client_order_id": f"eq.{client_order_id}"},
         )
 
+    async def mark_cancelled(self, client_order_id: str, reason: str | None = None) -> None:
+        await asyncio.to_thread(
+            self._patch,
+            {"status": "cancelled", "reject_reason": reason, "updated_at": _ts(pd.Timestamp.utcnow())},
+            {"client_order_id": f"eq.{client_order_id}"},
+        )
+
+    async def mark_filled(self, client_order_id: str, order_id: str | None = None) -> None:
+        values = {"status": "filled", "updated_at": _ts(pd.Timestamp.utcnow())}
+        if order_id:
+            values["order_id"] = order_id
+        await asyncio.to_thread(
+            self._patch,
+            values,
+            {"client_order_id": f"eq.{client_order_id}"},
+        )
+
     async def get(self, client_order_id: str) -> OrderIntent | None:
         return await asyncio.to_thread(self._get_sync, client_order_id)
+
+    async def list_active(self) -> list[OrderIntent]:
+        return await asyncio.to_thread(self._list_active_sync)
 
     def _headers(self, *, prefer: str | None = None) -> dict[str, str]:
         return self._connection.headers(prefer=prefer)
@@ -100,3 +120,30 @@ class SupabaseOrderIntentStore:
             reject_reason=row.get("reject_reason"),
             ts=pd.Timestamp(row["ts"]) if row.get("ts") else None,
         )
+
+    def _list_active_sync(self) -> list[OrderIntent]:
+        response = requests.get(
+            self._connection.rest_url(self._table),
+            headers=self._headers(),
+            params={
+                "status": "in.(pending,accepted)",
+                "select": "*",
+                "order": "updated_at.asc",
+            },
+            timeout=self._timeout,
+        )
+        response.raise_for_status()
+        payload = response.json() if response.content else []
+        return [
+            OrderIntent(
+                client_order_id=row["client_order_id"],
+                symbol=row["symbol"],
+                side=row["side"],
+                status=row["status"],
+                reason=row.get("reason"),
+                order_id=row.get("order_id"),
+                reject_reason=row.get("reject_reason"),
+                ts=pd.Timestamp(row["ts"]) if row.get("ts") else None,
+            )
+            for row in payload
+        ]

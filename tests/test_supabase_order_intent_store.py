@@ -89,6 +89,8 @@ def test_supabase_order_intent_store_marks_and_reads(monkeypatch) -> None:
 
     asyncio.run(store.mark_accepted("client-1", "order-1"))
     asyncio.run(store.mark_rejected("client-2", "min qty"))
+    asyncio.run(store.mark_cancelled("client-3", "user cancel"))
+    asyncio.run(store.mark_filled("client-4", "order-4"))
     intent = asyncio.run(store.get("client-1"))
 
     assert patch_calls[0][1] == {"client_order_id": "eq.client-1"}
@@ -97,5 +99,39 @@ def test_supabase_order_intent_store_marks_and_reads(monkeypatch) -> None:
     assert patch_calls[1][1] == {"client_order_id": "eq.client-2"}
     assert patch_calls[1][2]["status"] == "rejected"
     assert patch_calls[1][2]["reject_reason"] == "min qty"
+    assert patch_calls[2][1] == {"client_order_id": "eq.client-3"}
+    assert patch_calls[2][2]["status"] == "cancelled"
+    assert patch_calls[2][2]["reject_reason"] == "user cancel"
+    assert patch_calls[3][1] == {"client_order_id": "eq.client-4"}
+    assert patch_calls[3][2]["status"] == "filled"
+    assert patch_calls[3][2]["order_id"] == "order-4"
     assert intent.status == "accepted"
     assert intent.order_id == "order-1"
+
+
+def test_supabase_order_intent_store_lists_active(monkeypatch) -> None:
+    def fake_get(url, *, headers=None, params=None, timeout=None):
+        assert params == {"status": "in.(pending,accepted)", "select": "*", "order": "updated_at.asc"}
+        return FakeResponse(
+            [
+                {
+                    "client_order_id": "client-1",
+                    "symbol": "BTC/USDT",
+                    "side": "buy",
+                    "status": "pending",
+                    "reason": "ENTRY",
+                    "order_id": None,
+                    "reject_reason": None,
+                    "ts": "2024-01-01T00:00:00",
+                }
+            ]
+        )
+
+    monkeypatch.setattr("requests.get", fake_get)
+    store = make_store()
+
+    active = asyncio.run(store.list_active())
+
+    assert len(active) == 1
+    assert active[0].client_order_id == "client-1"
+    assert active[0].status == "pending"

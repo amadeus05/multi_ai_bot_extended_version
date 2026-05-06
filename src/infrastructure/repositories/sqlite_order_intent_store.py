@@ -50,8 +50,17 @@ class SQLiteOrderIntentStore:
     async def mark_rejected(self, client_order_id: str, reason: str) -> None:
         await asyncio.to_thread(self._mark_rejected_sync, client_order_id, reason)
 
+    async def mark_cancelled(self, client_order_id: str, reason: str | None = None) -> None:
+        await asyncio.to_thread(self._mark_cancelled_sync, client_order_id, reason)
+
+    async def mark_filled(self, client_order_id: str, order_id: str | None = None) -> None:
+        await asyncio.to_thread(self._mark_filled_sync, client_order_id, order_id)
+
     async def get(self, client_order_id: str) -> OrderIntent | None:
         return await asyncio.to_thread(self._get_sync, client_order_id)
+
+    async def list_active(self) -> list[OrderIntent]:
+        return await asyncio.to_thread(self._list_active_sync)
 
     def _record_pending_sync(self, command: PlaceOrderCommand) -> bool:
         self.ensure_schema()
@@ -102,6 +111,37 @@ class SQLiteOrderIntentStore:
                 (reason, _ts(pd.Timestamp.utcnow()), client_order_id),
             )
 
+    def _mark_cancelled_sync(self, client_order_id: str, reason: str | None = None) -> None:
+        self.ensure_schema()
+        with self._connection.connect() as conn:
+            conn.execute(
+                """
+                UPDATE order_intents
+                SET status = 'cancelled', reject_reason = ?, updated_at = ?
+                WHERE client_order_id = ?
+                """,
+                (reason, _ts(pd.Timestamp.utcnow()), client_order_id),
+            )
+
+    def _mark_filled_sync(self, client_order_id: str, order_id: str | None = None) -> None:
+        self.ensure_schema()
+        if order_id:
+            sql = """
+                UPDATE order_intents
+                SET status = 'filled', order_id = ?, updated_at = ?
+                WHERE client_order_id = ?
+                """
+            params = (order_id, _ts(pd.Timestamp.utcnow()), client_order_id)
+        else:
+            sql = """
+                UPDATE order_intents
+                SET status = 'filled', updated_at = ?
+                WHERE client_order_id = ?
+                """
+            params = (_ts(pd.Timestamp.utcnow()), client_order_id)
+        with self._connection.connect() as conn:
+            conn.execute(sql, params)
+
     def _get_sync(self, client_order_id: str) -> OrderIntent | None:
         self.ensure_schema()
         with self._connection.connect() as conn:
@@ -125,3 +165,28 @@ class SQLiteOrderIntentStore:
             reject_reason=row["reject_reason"],
             ts=pd.Timestamp(row["ts"]) if row["ts"] else None,
         )
+
+    def _list_active_sync(self) -> list[OrderIntent]:
+        self.ensure_schema()
+        with self._connection.connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT *
+                FROM order_intents
+                WHERE status IN ('pending', 'accepted')
+                ORDER BY updated_at ASC
+                """
+            ).fetchall()
+        return [
+            OrderIntent(
+                client_order_id=row["client_order_id"],
+                symbol=row["symbol"],
+                side=row["side"],
+                status=row["status"],
+                reason=row["reason"],
+                order_id=row["order_id"],
+                reject_reason=row["reject_reason"],
+                ts=pd.Timestamp(row["ts"]) if row["ts"] else None,
+            )
+            for row in rows
+        ]

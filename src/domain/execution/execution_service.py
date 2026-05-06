@@ -3,7 +3,7 @@ from core.interfaces.execution_lifecycle import ExecutionLifecycleExchange
 from core.types.commands import CancelOrderCommand, PlaceOrderCommand, TradingCommand
 from core.types.domain_types import Order
 from core.types.enums import OrderStatus
-from core.types.events import OrderAcceptedEvent, OrderRejectedEvent, TradingEvent
+from core.types.events import FillEvent, OrderAcceptedEvent, OrderCancelledEvent, OrderRejectedEvent, TradingEvent
 from core.types.execution_event_factory import ExecutionEventFactory
 from domain.execution.client_order_id import ensure_client_order_id
 from domain.execution.order_intent_store import OrderIntentStore
@@ -49,6 +49,10 @@ class ExecutionService:
                 await self._order_intent_store.mark_accepted(event.client_order_id, event.order_id)
             elif isinstance(event, OrderRejectedEvent) and event.client_order_id:
                 await self._order_intent_store.mark_rejected(event.client_order_id, event.reason)
+            elif isinstance(event, OrderCancelledEvent) and event.client_order_id:
+                await self._order_intent_store.mark_cancelled(event.client_order_id, event.reason)
+            elif isinstance(event, FillEvent) and event.client_order_id:
+                await self._order_intent_store.mark_filled(event.client_order_id, event.order_id)
 
     async def _place_order_legacy(self, command: PlaceOrderCommand, exchange: Exchange) -> list[TradingEvent]:
         order = command.order

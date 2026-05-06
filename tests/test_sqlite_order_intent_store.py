@@ -54,3 +54,32 @@ def test_sqlite_order_intent_store_persists_rejection_reason() -> None:
     assert intent is not None
     assert intent.status == "rejected"
     assert intent.reject_reason == "min qty"
+
+
+def test_sqlite_order_intent_store_lists_active_and_terminal_states() -> None:
+    db_path = Path(".temp_code") / "test_order_intents_terminal.sqlite"
+    for suffix in ("", "-wal", "-shm"):
+        path = Path(f"{db_path}{suffix}")
+        if path.exists():
+            path.unlink()
+
+    store = SQLiteOrderIntentStore(SQLiteConnection(str(db_path)))
+
+    asyncio.run(store.record_pending(make_command("client-pending")))
+    asyncio.run(store.record_pending(make_command("client-filled")))
+    asyncio.run(store.record_pending(make_command("client-cancelled")))
+    asyncio.run(store.mark_accepted("client-filled", "order-filled"))
+    asyncio.run(store.mark_filled("client-filled", "order-filled"))
+    asyncio.run(store.mark_cancelled("client-cancelled", "user cancel"))
+
+    active = asyncio.run(store.list_active())
+    filled = asyncio.run(store.get("client-filled"))
+    cancelled = asyncio.run(store.get("client-cancelled"))
+
+    assert [intent.client_order_id for intent in active] == ["client-pending"]
+    assert filled is not None
+    assert filled.status == "filled"
+    assert filled.order_id == "order-filled"
+    assert cancelled is not None
+    assert cancelled.status == "cancelled"
+    assert cancelled.reject_reason == "user cancel"

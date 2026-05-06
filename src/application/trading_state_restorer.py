@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from core.interfaces.exchange import Exchange
+from domain.execution.order_intent_reconciler import OrderIntentReconciler
 from domain.execution.order_intent_store import OrderIntentStore
 from domain.portfolio.portfolio_manager import PortfolioManager
 
@@ -74,6 +75,10 @@ class ExchangeSnapshotStateRestorer:
         self._portfolio.positions = list(positions)
         if self._order_intent_store is not None and "snapshot" in locals():
             await self._reconcile_open_orders(snapshot.open_orders)
+            await OrderIntentReconciler(
+                store=self._order_intent_store,
+                exchange=self._exchange,
+            ).reconcile_active()
         result = RestoreResult(
             restored=True,
             source="exchange_snapshot",

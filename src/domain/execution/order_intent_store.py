@@ -30,7 +30,16 @@ class OrderIntentStore(Protocol):
     async def mark_rejected(self, client_order_id: str, reason: str) -> None:
         ...
 
+    async def mark_cancelled(self, client_order_id: str, reason: str | None = None) -> None:
+        ...
+
+    async def mark_filled(self, client_order_id: str, order_id: str | None = None) -> None:
+        ...
+
     async def get(self, client_order_id: str) -> OrderIntent | None:
+        ...
+
+    async def list_active(self) -> list[OrderIntent]:
         ...
 
 
@@ -84,5 +93,42 @@ class InMemoryOrderIntentStore:
             ts=current.ts,
         )
 
+    async def mark_cancelled(self, client_order_id: str, reason: str | None = None) -> None:
+        current = self._intents.get(client_order_id)
+        if current is None:
+            return
+        self._intents[client_order_id] = OrderIntent(
+            client_order_id=current.client_order_id,
+            symbol=current.symbol,
+            side=current.side,
+            status="cancelled",
+            reason=current.reason,
+            order_id=current.order_id,
+            reject_reason=reason,
+            ts=current.ts,
+        )
+
+    async def mark_filled(self, client_order_id: str, order_id: str | None = None) -> None:
+        current = self._intents.get(client_order_id)
+        if current is None:
+            return
+        self._intents[client_order_id] = OrderIntent(
+            client_order_id=current.client_order_id,
+            symbol=current.symbol,
+            side=current.side,
+            status="filled",
+            reason=current.reason,
+            order_id=order_id or current.order_id,
+            reject_reason=current.reject_reason,
+            ts=current.ts,
+        )
+
     async def get(self, client_order_id: str) -> OrderIntent | None:
         return self._intents.get(client_order_id)
+
+    async def list_active(self) -> list[OrderIntent]:
+        return [
+            intent
+            for intent in self._intents.values()
+            if intent.status in {"pending", "accepted"}
+        ]

@@ -52,3 +52,23 @@ def test_in_memory_store_marks_accepted_and_rejected() -> None:
     assert accepted.order_id == "order-1"
     assert rejected.status == "rejected"
     assert rejected.reject_reason == "min qty"
+
+
+def test_in_memory_store_lists_active_and_marks_terminal_states() -> None:
+    store = InMemoryOrderIntentStore()
+    asyncio.run(store.record_pending(make_command("client-pending")))
+    asyncio.run(store.record_pending(make_command("client-filled")))
+    asyncio.run(store.record_pending(make_command("client-cancelled")))
+    asyncio.run(store.mark_accepted("client-filled", "order-filled"))
+    asyncio.run(store.mark_filled("client-filled", "order-filled"))
+    asyncio.run(store.mark_cancelled("client-cancelled", "user cancel"))
+
+    active = asyncio.run(store.list_active())
+    filled = asyncio.run(store.get("client-filled"))
+    cancelled = asyncio.run(store.get("client-cancelled"))
+
+    assert [intent.client_order_id for intent in active] == ["client-pending"]
+    assert filled.status == "filled"
+    assert filled.order_id == "order-filled"
+    assert cancelled.status == "cancelled"
+    assert cancelled.reject_reason == "user cancel"

@@ -34,6 +34,10 @@ class FakeSnapshotExchange:
             },
         )()
 
+    async def get_order_status(self, order_id: str) -> dict:
+        assert order_id == "link:client-1"
+        return {"status": "new", "order_id": "open-1"}
+
 
 class FailingSnapshotExchange:
     async def restore_snapshot(self, *, quote_asset: str = "USDT"):
@@ -103,6 +107,9 @@ class SnapshotWithUnlinkedOpenOrders:
                 "recent_executions": [],
             },
         )()
+
+    async def get_order_status(self, order_id: str) -> dict:
+        raise AssertionError("unlinked open orders should not be reconciled")
 
 
 def test_exchange_snapshot_restorer_ignores_open_orders_without_order_link_id() -> None:

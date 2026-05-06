@@ -54,6 +54,25 @@ class LifecycleExchange(LegacyExchange):
         return [OrderCancelledEvent(command.ts, command.order_id, reason=command.reason)]
 
 
+class FilledLifecycleExchange(LegacyExchange):
+    async def submit_order_lifecycle(self, command: PlaceOrderCommand) -> list:
+        return [
+            OrderAcceptedEvent(command.ts, "life-order-1", command.order.client_order_id, command.order),
+            FillEvent(
+                ts=command.ts,
+                order_id="life-order-1",
+                client_order_id=command.order.client_order_id,
+                symbol=command.order.symbol,
+                side=command.order.side,
+                amount=command.order.amount,
+                price=command.order.price or 0.0,
+            ),
+        ]
+
+    async def cancel_order_lifecycle(self, command: CancelOrderCommand) -> list:
+        return [OrderCancelledEvent(command.ts, command.order_id, reason=command.reason)]
+
+
 def make_order() -> Order:
     return Order("BTC/USDT", OrderSide.BUY, amount=2.0, price=100.0, meta={"tag": "entry"})
 
@@ -188,6 +207,20 @@ def test_execution_service_intent_store_records_rejection_reason() -> None:
     intent = asyncio.run(store.get("rejected-client-id"))
     assert intent.status == "rejected"
     assert intent.reject_reason == "min qty"
+
+
+def test_execution_service_intent_store_records_fill_terminal_state() -> None:
+    store = InMemoryOrderIntentStore()
+    service = ExecutionService(order_intent_store=store)
+    order = make_order()
+    order.client_order_id = "filled-client-id"
+
+    events = asyncio.run(service.execute(PlaceOrderCommand(order), FilledLifecycleExchange()))
+
+    assert isinstance(events[-1], FillEvent)
+    intent = asyncio.run(store.get("filled-client-id"))
+    assert intent.status == "filled"
+    assert intent.order_id == "life-order-1"
 
 
 def test_execution_service_without_intent_store_keeps_legacy_duplicate_behavior() -> None:
