@@ -29,6 +29,9 @@ class SupabaseEventRepository:
         for row in rows:
             yield row_to_record(row)
 
+    async def max_sequence(self, session_id: str) -> int:
+        return await asyncio.to_thread(self._max_sequence_sync, session_id)
+
     def _append_many_sync(self, records: list[EventRecord]) -> None:
         rows = [record_to_row(record) for record in records]
         response = requests.post(
@@ -52,3 +55,21 @@ class SupabaseEventRepository:
         )
         response.raise_for_status()
         return response.json()
+
+    def _max_sequence_sync(self, session_id: str) -> int:
+        response = requests.get(
+            self._connection.rest_url(self._table),
+            headers=self._connection.headers(),
+            params={
+                "session_id": f"eq.{session_id}",
+                "select": "sequence",
+                "order": "sequence.desc",
+                "limit": "1",
+            },
+            timeout=20,
+        )
+        response.raise_for_status()
+        rows = response.json()
+        if not rows:
+            return 0
+        return int(rows[0].get("sequence") or 0)

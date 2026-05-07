@@ -34,6 +34,11 @@ class EventJournal:
         self._sequence = 0
         self._lock = asyncio.Lock()
 
+    async def initialize(self) -> None:
+        """Continue an existing logical session after process restart."""
+        async with self._lock:
+            self._sequence = await self._repository.max_sequence(self.session_id)
+
     async def record_event(self, event: TradingEvent, *, source: str | None = None) -> None:
         sequence = await self._append(
             event_id=event_record_id(event),

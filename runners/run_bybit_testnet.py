@@ -40,6 +40,7 @@ def _env_bool(name: str, default: bool) -> bool:
 
 async def main() -> None:
     settings = load_live_settings(overrides={"testnet": True})
+    storage = load_storage_settings()
     trading = settings.trading
     model = load_default_lightgbm_model(cwd=Path.cwd(), model_path_cfg=trading.model_path, required_bars=250)
     exchange = BybitExecutionExchange(
@@ -49,7 +50,7 @@ async def main() -> None:
         safety=build_testnet_safety_from_env(trading.symbols),
     )
     portfolio = PortfolioManager(cash={"USDT": float(trading.initial_capital)})
-    order_intent_store = build_order_intent_store(load_storage_settings())
+    order_intent_store = build_order_intent_store(storage)
     execution = ExecutionService(order_intent_store=order_intent_store)
     orchestrator = build_realtime_orchestrator(
         settings=settings,
@@ -57,13 +58,12 @@ async def main() -> None:
         model=model,
         portfolio=portfolio,
         execution=execution,
-    )
-    orchestrator.set_state_restorer(
-        ExchangeSnapshotStateRestorer(
+        storage=storage,
+        state_restorer_factory=lambda **_: ExchangeSnapshotStateRestorer(
             exchange=exchange,
             portfolio=portfolio,
             order_intent_store=order_intent_store,
-        )
+        ),
     )
     orchestrator.set_execution_event_source(exchange.stream_private_events)
     await orchestrator.run()

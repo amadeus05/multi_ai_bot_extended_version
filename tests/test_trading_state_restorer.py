@@ -247,8 +247,8 @@ def test_realtime_orchestrator_publishes_execution_source_events() -> None:
         model=FakeModel(),
         symbols=["BTC/USDT"],
         runtime=runtime,
+        execution_event_source=one_fill_source,
     )
-    orchestrator.set_execution_event_source(one_fill_source)
 
     asyncio.run(orchestrator.run())
 

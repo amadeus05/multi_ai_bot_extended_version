@@ -39,6 +39,7 @@ class RealtimeOrchestrator:
     ) -> None:
         self._notifier = notifier
         self._runtime = runtime or TradingRuntimeLoop(engine, journal=journal, notifier=notifier)
+        self._journal = journal
         self._data_provider = data_provider
         self._model = model
         self._symbols = symbols
@@ -53,6 +54,8 @@ class RealtimeOrchestrator:
         self._execution_event_source = source
 
     async def restore_trading_state(self) -> None:
+        if self._journal is not None:
+            await self._journal.initialize()
         result = await self._state_restorer.restore_trading_state()
         logger.info(
             "Realtime state restore finished | source=%s | restored=%s | positions=%s",

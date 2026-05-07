@@ -26,6 +26,9 @@ class SQLiteEventRepository:
         for row in rows:
             yield row_to_record(row)
 
+    async def max_sequence(self, session_id: str) -> int:
+        return await asyncio.to_thread(self._max_sequence_sync, session_id)
+
     def ensure_schema(self) -> None:
         with self._connection.connect() as conn:
             conn.execute(
@@ -86,3 +89,16 @@ class SQLiteEventRepository:
                     (session_id,),
                 )
             )
+
+    def _max_sequence_sync(self, session_id: str) -> int:
+        self.ensure_schema()
+        with self._connection.connect() as conn:
+            row = conn.execute(
+                f"""
+                SELECT COALESCE(MAX(sequence), 0) AS max_sequence
+                FROM {self._table}
+                WHERE session_id = ?
+                """,
+                (session_id,),
+            ).fetchone()
+        return int(row["max_sequence"] or 0)

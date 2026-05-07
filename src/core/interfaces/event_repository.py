@@ -15,3 +15,6 @@ class EventRepository(Protocol):
 
     async def iter_session(self, session_id: str) -> AsyncIterator[EventRecord]:
         ...
+
+    async def max_sequence(self, session_id: str) -> int:
+        ...
