@@ -7,3 +7,5 @@ scikit-learn
 lightgbm
 joblib
 websocket-client
+fastapi
+uvicorn
