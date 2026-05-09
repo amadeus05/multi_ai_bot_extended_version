@@ -78,6 +78,39 @@ class RealtimeOrchestrator:
                 logger.info("[%s] warmup loaded rows=%s", symbol, len(frame))
         logger.info("Realtime bootstrap finished")
 
+    async def scan_warmup_snapshot(self) -> None:
+        """Run one immediate scan using the latest warmed-up bar for visibility after startup."""
+        ticks: list[Tick] = []
+        for symbol in self._symbols:
+            frame = await self._data_provider.warmup(symbol, self._warmup_bars)
+            if frame.empty:
+                logger.warning("[%s] initial scan skipped: warmup frame is empty", symbol)
+                continue
+
+            row = frame.iloc[-1]
+            close = float(row.get("close", row.get("price", 0.0)))
+            tick = Tick(
+                symbol=symbol,
+                ts=pd.Timestamp(row.get("timestamp")),
+                bid=close,
+                ask=close,
+                price=close,
+                volume=float(row.get("volume", 0.0)),
+                open=float(row.get("open", close)),
+                high=float(row.get("high", close)),
+                low=float(row.get("low", close)),
+                close=close,
+            )
+            ticks.append(tick)
+
+        if not ticks:
+            logger.warning("initial scan skipped: no warmed-up ticks")
+            return
+
+        logger.info("initial scan requested | symbols=%s", ", ".join(tick.symbol for tick in ticks))
+        await self._runtime.process_market_batch(ticks)
+        logger.info("initial scan finished | symbols=%s", len(ticks))
+
     @staticmethod
     def _batch_ts(tick: Tick) -> pd.Timestamp:
         ts = pd.Timestamp(tick.ts)
@@ -111,9 +144,10 @@ class RealtimeOrchestrator:
 
     async def run(self) -> None:
         await self.restore_trading_state()
-        await self.bootstrap()
         for symbol in self._symbols:
             self._data_provider.subscribe(symbol, self._publish_tick)
+        await self.bootstrap()
+        await self.scan_warmup_snapshot()
 
         runtime_task = self._runtime.start()
         provider_task = asyncio.create_task(self._data_provider.run())

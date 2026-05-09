@@ -246,6 +246,12 @@ class TradingEngine:
         portfolio = self._deps["portfolio"]
 
         if portfolio.get_position(tick.symbol) is not None:
+            logger.info(
+                "scan result | symbol=%s | ts=%s | price=%s | decision=skip_existing_position",
+                tick.symbol,
+                getattr(tick, "ts", None),
+                getattr(tick, "price", None),
+            )
             return None
 
         df = await self._deps["data"].warmup(tick.symbol, self._deps["model"].required_bars())
@@ -254,15 +260,36 @@ class TradingEngine:
         if bp is not None:
             prediction["barrier_stop_pct"], prediction["barrier_take_pct"] = bp
         raw_order = self._deps["strategy"].on_prediction(tick, prediction, self._deps["portfolio"])
-        if raw_order is None:
-            return None
-        raw_order.meta = raw_order.meta or {}
         p_long = float(prediction.get("p_long", 0.5))
         p_short = float(prediction.get("p_short", 0.5))
+        signal_gap = abs(p_long - p_short)
+        if raw_order is None:
+            logger.info(
+                "scan result | symbol=%s | ts=%s | price=%s | p_long=%.4f | p_short=%.4f | gap=%.4f | decision=no_signal",
+                tick.symbol,
+                getattr(tick, "ts", None),
+                getattr(tick, "price", None),
+                p_long,
+                p_short,
+                signal_gap,
+            )
+            return None
+        raw_order.meta = raw_order.meta or {}
         raw_order.meta.setdefault("p_long", p_long)
         raw_order.meta.setdefault("p_short", p_short)
-        raw_order.meta.setdefault("signal_gap", abs(p_long - p_short))
+        raw_order.meta.setdefault("signal_gap", signal_gap)
         raw_order.meta.setdefault("direction_prob", max(p_long, p_short))
+        logger.info(
+            "scan candidate | symbol=%s | ts=%s | price=%s | side=%s | p_long=%.4f | p_short=%.4f | gap=%.4f | score=%.4f",
+            tick.symbol,
+            getattr(tick, "ts", None),
+            getattr(tick, "price", None),
+            getattr(raw_order.side, "value", raw_order.side),
+            p_long,
+            p_short,
+            signal_gap,
+            float(raw_order.meta.get("score", 0.0)),
+        )
         return _EntryCandidate(
             tick=tick,
             order=raw_order,
@@ -276,6 +303,7 @@ class TradingEngine:
         portfolio = self._deps["portfolio"]
 
         raw_order = candidate.order
+        await exchange.prepare_market_order(raw_order)
         safe_order = risk.check(raw_order, portfolio, exchange)
         if safe_order is None:
             return None
@@ -328,6 +356,12 @@ class TradingEngine:
             return []
 
         ordered_ticks = sorted(ticks, key=lambda tick: str(getattr(tick, "symbol", "")))
+        batch_ts = getattr(ordered_ticks[0], "ts", None)
+        logger.info(
+            "scan start | ts=%s | symbols=%s",
+            batch_ts,
+            ",".join(str(getattr(tick, "symbol", "")) for tick in ordered_ticks),
+        )
         for tick in ordered_ticks:
             self._prepare_tick_context(tick)
 
@@ -355,6 +389,13 @@ class TradingEngine:
             command = await self._command_for_entry_candidate(candidate)
             if command is not None:
                 events.extend(await self.execute_commands([command]))
+        logger.info(
+            "scan complete | ts=%s | symbols=%s | candidates=%s | events=%s",
+            batch_ts,
+            len(ordered_ticks),
+            len(candidates),
+            len(events),
+        )
         return events
 
     async def execute_commands(self, commands: list[TradingCommand]) -> list[TradingEvent]:
