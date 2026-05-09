@@ -43,6 +43,19 @@ class FakeModel:
         return {"score": 0.5, "p_long": 0.72, "p_short": 0.28}
 
 
+class SymbolScoreModel:
+    def __init__(self, scores: dict[str, tuple[float, float]]) -> None:
+        self._scores = scores
+
+    def required_bars(self) -> int:
+        return 1
+
+    def predict(self, features: pd.DataFrame) -> dict:
+        symbol = str(features["symbol"].iloc[-1])
+        score, p_long = self._scores[symbol]
+        return {"score": score, "p_long": p_long, "p_short": 1.0 - p_long}
+
+
 class FakeStrategy:
     def on_prediction(self, tick: Tick, prediction: dict, portfolio: PortfolioManager):
         meta = {"score": prediction["score"]}
@@ -83,6 +96,15 @@ class FakeRisk:
         )
 
 
+class OnePositionRisk(FakeRisk):
+    def check(self, order: Order, portfolio: PortfolioManager, exchange):
+        self.checked_orders.append(order)
+        if portfolio.get_open_positions():
+            return None
+        order.amount = 1.0
+        return order
+
+
 class FakeBarrierPolicy:
     def barriers_for_last_row(self, _frame: pd.DataFrame):
         return 0.01, 0.02
@@ -105,6 +127,31 @@ class NoopExchange:
 
 class NoopExecution:
     pass
+
+
+class FillExecution:
+    @staticmethod
+    def ensure_client_order_id(order: Order, command=None) -> None:
+        order.client_order_id = f"client-{order.symbol}"
+
+    async def execute(self, command, exchange):
+        order = command.order
+        order.id = f"order-{order.symbol}"
+        return [
+            FillEvent(
+                ts=command.ts,
+                order_id=order.id,
+                client_order_id=order.client_order_id,
+                symbol=order.symbol,
+                side=order.side,
+                amount=float(order.amount),
+                price=float(order.price),
+                fee=0.0,
+                meta=order.meta,
+                command_reason=command.reason,
+                event_id=f"fill-{order.symbol}",
+            )
+        ]
 
 
 class RecordingNotifier(Notifier):
@@ -148,15 +195,17 @@ def make_engine(
     risk: FakeRisk | None = None,
     exit_manager=None,
     notifier: Notifier | None = None,
+    model=None,
+    execution=None,
 ) -> TradingEngine:
     return TradingEngine(
         exchange=NoopExchange(),
         data_provider=data or FakeDataProvider(),
-        model=FakeModel(),
+        model=model or FakeModel(),
         strategy=FakeStrategy(),
         risk_manager=risk or FakeRisk(),
         portfolio=portfolio or PortfolioManager(cash={"USDT": 1000.0}),
-        execution=NoopExecution(),
+        execution=execution or NoopExecution(),
         exit_manager=exit_manager,
         barrier_policy=FakeBarrierPolicy(),
         notifier=notifier,
@@ -347,3 +396,33 @@ def test_exit_fill_notifies_closed_trade_with_pnl_and_balance() -> None:
     assert notification.pnl_abs == pytest.approx(-5.0)
     assert notification.pnl_pct == pytest.approx(-0.05)
     assert notification.balance == pytest.approx(995.0)
+
+
+def test_market_batch_ranks_entry_candidates_before_risk_check() -> None:
+    portfolio = PortfolioManager(cash={"USDT": 1000.0})
+    risk = OnePositionRisk()
+    engine = make_engine(
+        portfolio=portfolio,
+        risk=risk,
+        model=SymbolScoreModel(
+            {
+                "AAA/USDT": (0.1, 0.60),
+                "ZZZ/USDT": (0.9, 0.90),
+            }
+        ),
+        execution=FillExecution(),
+    )
+
+    events = asyncio.run(
+        engine.process_market_batch(
+            [
+                make_tick("AAA/USDT"),
+                make_tick("ZZZ/USDT"),
+            ]
+        )
+    )
+
+    assert [order.symbol for order in risk.checked_orders] == ["ZZZ/USDT", "AAA/USDT"]
+    assert portfolio.get_position("ZZZ/USDT") is not None
+    assert portfolio.get_position("AAA/USDT") is None
+    assert len(events) == 1

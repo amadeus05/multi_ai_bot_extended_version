@@ -19,13 +19,11 @@ from application.backtest_trade_export import export_closed_trades_csv
 from application.inference.walk_forward_model import WalkForwardPredictionModel
 from application.training.data_loader import load_training_frame
 from application.training.walk_forward_pipeline import WalkForwardPipeline
-from application.trading_runtime_loop import TradingRuntimeLoop
 from application.trading_runtime_factory import build_trading_engine
 from core.config.loader import load_backtest_settings
 from core.config.train_config import TrainConfig
-from core.types.events import MarketEvent
 from domain.portfolio.portfolio_manager import PortfolioManager
-from infrastructure.data_providers.historical_replay_provider import HistoricalReplayProvider
+from infrastructure.data_providers.historical_replay_provider import HistoricalMultiSymbolReplayProvider
 from infrastructure.notifications import SilentNotifier
 from infrastructure.exchanges.simulation.simulated_exchange import SimulatedExchange
 
@@ -76,15 +74,9 @@ async def main() -> None:
     train_cfg = TrainConfig.from_env()
     trading = backtest_settings.trading
     symbols = list(trading.symbols)
-    if len(symbols) != 1:
-        raise ValueError(
-            "TradingEngine walk-forward backtest currently supports exactly one symbol. "
-            "Set SYMBOLS to one instrument, for example SYMBOLS=BTC/USDT."
-        )
     if backtest_settings.strict_oos and not backtest_settings.start:
         raise ValueError("BACKTEST_STRICT_OOS=1 requires BACKTEST_START.")
 
-    symbol = symbols[0]
     dataset = load_training_frame(backtest_settings.dataset_dir, symbols, trading.timeframe)
     if dataset.empty:
         raise RuntimeError("Empty dataset for walk-forward backtest. Run dataset pipeline first.")
@@ -101,21 +93,25 @@ async def main() -> None:
     }
     wf_model = WalkForwardPredictionModel(lookup=lookup, feature_columns=wf_result.feature_columns)
 
-    frame = _load_symbol_frame(backtest_settings, symbol)
+    frames = {symbol: _load_symbol_frame(backtest_settings, symbol) for symbol in symbols}
     strict_predictions = (
         backtest_settings.strict_oos
         or os.getenv("WF_REPLAY_STRICT_PREDICTIONS", "0").strip().lower() in ("1", "true", "yes")
     )
     start_bar_idx = max(0, int(backtest_settings.skip_initial_bars))
     if strict_predictions:
-        symbol_predictions = wf_result.predictions.loc[wf_result.predictions["symbol"].astype(str) == symbol]
-        if symbol_predictions.empty:
-            raise RuntimeError(f"Walk-forward produced no OOS predictions for {symbol}.")
-        first_pred_ts = pd.Timestamp(symbol_predictions["timestamp"].min())
-        first_pred_matches = frame.index[pd.to_datetime(frame["timestamp"], errors="coerce") >= first_pred_ts].tolist()
-        if not first_pred_matches:
-            raise RuntimeError(f"No replay rows at or after first OOS prediction timestamp {first_pred_ts}.")
-        start_bar_idx = max(start_bar_idx, int(first_pred_matches[0]))
+        first_indices: list[int] = []
+        for symbol, frame in frames.items():
+            symbol_predictions = wf_result.predictions.loc[wf_result.predictions["symbol"].astype(str) == symbol]
+            if symbol_predictions.empty:
+                raise RuntimeError(f"Walk-forward produced no OOS predictions for {symbol}.")
+            first_pred_ts = pd.Timestamp(symbol_predictions["timestamp"].min())
+            matches = frame.index[pd.to_datetime(frame["timestamp"], errors="coerce") >= first_pred_ts].tolist()
+            if not matches:
+                raise RuntimeError(f"No replay rows at or after first OOS prediction timestamp {first_pred_ts} for {symbol}.")
+            first_indices.append(int(matches[0]))
+        if first_indices:
+            start_bar_idx = max(start_bar_idx, max(first_indices))
 
     exchange = SimulatedExchange(
         commission=float(trading.costs.taker_com),
@@ -123,7 +119,7 @@ async def main() -> None:
         leverage=float(trading.leverage),
     )
     portfolio = PortfolioManager(cash={"USDT": float(trading.initial_capital)})
-    data_provider = HistoricalReplayProvider(symbol, frame, skip_initial_bars=start_bar_idx)
+    data_provider = HistoricalMultiSymbolReplayProvider(frames, skip_initial_bars=start_bar_idx)
     reporter = BacktestReplayReporter(
         config=backtest_settings,
         portfolio=portfolio,
@@ -138,34 +134,33 @@ async def main() -> None:
         portfolio=portfolio,
         notifier=notifier,
     )
-    runtime = TradingRuntimeLoop(engine, journal=None, notifier=notifier)
-
     print(
-        f"TradingEngine Walk-forward OOS backtest | {symbol} | rows={len(frame)} | "
+        f"TradingEngine Walk-forward OOS backtest | symbols={','.join(symbols)} | "
+        f"rows={sum(len(frame) for frame in frames.values())} | "
         f"predictions={len(wf_result.predictions)} | folds={len(wf_result.fold_details)} | "
         f"first_bar_index={start_bar_idx} | strict_predictions={int(strict_predictions)} | "
         f"capital={trading.initial_capital}"
     )
     print("-" * 80)
 
-    for tick in data_provider.iter_replay_ticks():
-        await runtime.process_once(MarketEvent(tick))
+    for ticks in data_provider.iter_replay_batches():
+        await engine.process_market_batch(ticks)
         reporter.flush_trade_events()
-        mark = float(tick.close if tick.close is not None else tick.price)
-        reporter.record_equity(tick.ts, {symbol: mark})
+        marks = {tick.symbol: float(tick.close if tick.close is not None else tick.price) for tick in ticks}
+        reporter.record_equity(ticks[0].ts, marks)
 
     final_ts = data_provider.last_timestamp
-    final_close = data_provider.last_close
-    if final_ts is not None and final_close is not None:
+    final_closes = data_provider.last_closes
+    if final_ts is not None and final_closes:
         await close_all_positions_at_market(
             engine=engine,
             portfolio=portfolio,
             exchange=exchange,
-            market_prices={symbol: float(final_close)},
+            market_prices=final_closes,
             ts=final_ts,
         )
         reporter.flush_trade_events()
-        reporter.record_equity(final_ts, {symbol: float(final_close)})
+        reporter.record_equity(final_ts, final_closes)
 
     snap = portfolio.get_state_snapshot()
     print(

@@ -5,6 +5,8 @@ import logging
 from collections.abc import AsyncIterator, Callable
 from contextlib import suppress
 
+import pandas as pd
+
 from application.event_journal import EventJournal
 from application.trading_engine import TradingEngine
 from application.trading_runtime_loop import TradingRuntimeLoop
@@ -46,6 +48,8 @@ class RealtimeOrchestrator:
         self._warmup_bars = warmup_bars if warmup_bars is not None else model.required_bars()
         self._state_restorer = state_restorer or NoopTradingStateRestorer(source="realtime")
         self._execution_event_source: Callable[[], AsyncIterator[TradingEvent]] | None = None
+        self._pending_batch_ts: pd.Timestamp | None = None
+        self._pending_batch: dict[str, Tick] = {}
 
     def set_state_restorer(self, state_restorer: TradingStateRestorer | None) -> None:
         self._state_restorer = state_restorer or NoopTradingStateRestorer(source="realtime")
@@ -74,13 +78,35 @@ class RealtimeOrchestrator:
                 logger.info("[%s] warmup loaded rows=%s", symbol, len(frame))
         logger.info("Realtime bootstrap finished")
 
+    @staticmethod
+    def _batch_ts(tick: Tick) -> pd.Timestamp:
+        ts = pd.Timestamp(tick.ts)
+        if ts.tzinfo is not None:
+            ts = ts.tz_convert(None)
+        return ts
+
+    async def _flush_market_batch(self) -> None:
+        if not self._pending_batch:
+            return
+        ticks = [self._pending_batch[symbol] for symbol in sorted(self._pending_batch)]
+        self._pending_batch = {}
+        self._pending_batch_ts = None
+        await self._runtime.publish_market_batch(ticks)
+
     async def _publish_tick(self, tick: Tick) -> None:
-        await self._runtime.publish(MarketEvent(tick))
+        ts = self._batch_ts(tick)
+        if self._pending_batch_ts is not None and ts != self._pending_batch_ts:
+            await self._flush_market_batch()
+        self._pending_batch_ts = ts
+        self._pending_batch[tick.symbol] = tick
+        if set(self._pending_batch) >= set(self._symbols):
+            await self._flush_market_batch()
 
     async def _run_execution_event_source(self) -> None:
         if self._execution_event_source is None:
             return
         async for event in self._execution_event_source():
+            await self._flush_market_batch()
             await self._runtime.publish(event)
 
     async def run(self) -> None:
@@ -106,9 +132,11 @@ class RealtimeOrchestrator:
             )
             if provider_task in done:
                 provider_task.result()
+                await self._flush_market_batch()
                 await self._runtime.drain()
             elif execution_source_task is not None and execution_source_task in done:
                 execution_source_task.result()
+                await self._flush_market_batch()
                 await self._runtime.drain()
             else:
                 runtime_task.result()

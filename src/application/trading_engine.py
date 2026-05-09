@@ -1,4 +1,5 @@
 import logging
+from dataclasses import dataclass
 
 from application.event_journal import EventJournal
 from application.execution_event_deduplicator import ExecutionEventDeduplicator
@@ -31,6 +32,14 @@ ENGINE_META_EXIT_REASON = "_engine_exit_reason"
 ENGINE_META_REASON_SUFFIX = "_engine_reason_suffix"
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class _EntryCandidate:
+    tick: object
+    order: Order
+    prediction: dict
+    score: float
 
 
 def _optional_float(value) -> float | None:
@@ -233,13 +242,11 @@ class TradingEngine:
                     ]
         return []
 
-    async def _commands_for_entry_tick(self, tick) -> list[TradingCommand]:
-        risk = self._deps["risk"]
-        exchange = self._deps["exchange"]
+    async def _entry_candidate_for_tick(self, tick) -> _EntryCandidate | None:
         portfolio = self._deps["portfolio"]
 
         if portfolio.get_position(tick.symbol) is not None:
-            return []
+            return None
 
         df = await self._deps["data"].warmup(tick.symbol, self._deps["model"].required_bars())
         prediction = self._deps["model"].predict(df)
@@ -248,7 +255,7 @@ class TradingEngine:
             prediction["barrier_stop_pct"], prediction["barrier_take_pct"] = bp
         raw_order = self._deps["strategy"].on_prediction(tick, prediction, self._deps["portfolio"])
         if raw_order is None:
-            return []
+            return None
         raw_order.meta = raw_order.meta or {}
         p_long = float(prediction.get("p_long", 0.5))
         p_short = float(prediction.get("p_short", 0.5))
@@ -256,14 +263,34 @@ class TradingEngine:
         raw_order.meta.setdefault("p_short", p_short)
         raw_order.meta.setdefault("signal_gap", abs(p_long - p_short))
         raw_order.meta.setdefault("direction_prob", max(p_long, p_short))
+        return _EntryCandidate(
+            tick=tick,
+            order=raw_order,
+            prediction=prediction,
+            score=float(raw_order.meta.get("score", 0.0)),
+        )
+
+    async def _command_for_entry_candidate(self, candidate: _EntryCandidate) -> TradingCommand | None:
+        risk = self._deps["risk"]
+        exchange = self._deps["exchange"]
+        portfolio = self._deps["portfolio"]
+
+        raw_order = candidate.order
         safe_order = risk.check(raw_order, portfolio, exchange)
         if safe_order is None:
-            return []
+            return None
         self._signal_seq += 1
         safe_order.meta = safe_order.meta or {}
         safe_order.meta["signal_number"] = self._signal_seq
-        await self._notify_signal(self._signal_notification(tick=tick, order=safe_order, portfolio=portfolio))
-        return [PlaceOrderCommand(safe_order, reason="ENTRY", ts=getattr(tick, "ts", None), source_tick=tick)]
+        await self._notify_signal(self._signal_notification(tick=candidate.tick, order=safe_order, portfolio=portfolio))
+        return PlaceOrderCommand(safe_order, reason="ENTRY", ts=getattr(candidate.tick, "ts", None), source_tick=candidate.tick)
+
+    async def _commands_for_entry_tick(self, tick) -> list[TradingCommand]:
+        candidate = await self._entry_candidate_for_tick(tick)
+        if candidate is None:
+            return []
+        command = await self._command_for_entry_candidate(candidate)
+        return [command] if command is not None else []
 
     async def _commands_for_market_event(self, event: MarketEvent) -> list[TradingCommand]:
         tick = event.tick
@@ -289,6 +316,46 @@ class TradingEngine:
         if isinstance(event, (OrderAcceptedEvent, OrderCancelledEvent, OrderRejectedEvent)):
             return []
         return []
+
+    async def process_market_batch(self, ticks: list) -> list[TradingEvent]:
+        """Process one timestamp batch fairly across symbols.
+
+        Exits are executed before entries for every symbol in the batch. Entry
+        candidates are then ranked by signal score before risk checks, so symbol
+        iteration order does not decide which candidate gets limited capital.
+        """
+        if not ticks:
+            return []
+
+        ordered_ticks = sorted(ticks, key=lambda tick: str(getattr(tick, "symbol", "")))
+        for tick in ordered_ticks:
+            self._prepare_tick_context(tick)
+
+        exit_commands: list[TradingCommand] = []
+        for tick in ordered_ticks:
+            exit_commands.extend(await self._commands_for_exit_tick(tick))
+        events = await self.execute_commands(exit_commands)
+
+        candidates: list[_EntryCandidate] = []
+        for tick in ordered_ticks:
+            candidate = await self._entry_candidate_for_tick(tick)
+            if candidate is not None:
+                candidates.append(candidate)
+        candidates.sort(
+            key=lambda candidate: (
+                candidate.score,
+                float((candidate.order.meta or {}).get("direction_prob", 0.0)),
+                float((candidate.order.meta or {}).get("signal_gap", 0.0)),
+                str(candidate.order.symbol),
+            ),
+            reverse=True,
+        )
+
+        for candidate in candidates:
+            command = await self._command_for_entry_candidate(candidate)
+            if command is not None:
+                events.extend(await self.execute_commands([command]))
+        return events
 
     async def execute_commands(self, commands: list[TradingCommand]) -> list[TradingEvent]:
         exchange = self._deps["exchange"]

@@ -6,6 +6,7 @@ from contextlib import suppress
 from application.event_journal import EventJournal
 from application.trading_engine import TradingEngine
 from core.interfaces.notifier import Notifier
+from core.types.domain_types import Tick
 from core.types.commands import TradingCommand
 from core.types.events import TradingEvent
 
@@ -24,11 +25,14 @@ class TradingRuntimeLoop:
         self._journal = journal
         self._engine.set_event_journal(journal)
         self._notifier = notifier
-        self._queue: asyncio.Queue[TradingEvent | None] = asyncio.Queue()
+        self._queue: asyncio.Queue[TradingEvent | list[Tick] | None] = asyncio.Queue()
         self._running = False
 
     async def publish(self, event: TradingEvent) -> None:
         await self._queue.put(event)
+
+    async def publish_market_batch(self, ticks: list[Tick]) -> None:
+        await self._queue.put(list(ticks))
 
     async def stop(self) -> None:
         await self._queue.put(None)
@@ -45,6 +49,9 @@ class TradingRuntimeLoop:
         commands: list[TradingCommand] = await self._engine.process_event(event)
         return await self._engine.execute_commands(commands)
 
+    async def process_market_batch(self, ticks: list[Tick]) -> list[TradingEvent]:
+        return await self._engine.process_market_batch(ticks)
+
     async def run_forever(self) -> None:
         self._running = True
         while self._running:
@@ -54,7 +61,10 @@ class TradingRuntimeLoop:
                     self._running = False
                     continue
                 try:
-                    await self.process_once(event)
+                    if isinstance(event, list):
+                        await self.process_market_batch(event)
+                    else:
+                        await self.process_once(event)
                 except Exception as exc:
                     if self._notifier is not None:
                         with suppress(Exception):
