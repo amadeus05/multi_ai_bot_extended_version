@@ -1,3 +1,6 @@
+import os
+import uuid
+
 import numpy as np
 
 from core.interfaces.exchange import Exchange
@@ -16,12 +19,19 @@ class SimulatedExchange(Exchange):
     Round-trip PnL%: вычитается 2 * commission.
     """
 
-    def __init__(self, commission: float = 0.0004, slippage: float = 0.0003, leverage: float = 1.0):
+    def __init__(
+        self,
+        commission: float = 0.0004,
+        slippage: float = 0.0003,
+        leverage: float = 1.0,
+        order_id_prefix: str | None = None,
+    ):
         self._commission = float(commission)
         self._slippage = float(slippage)
         self._leverage = float(leverage)
         self._orders: dict[str, Order] = {}
         self._order_id = 0
+        self._order_id_prefix = order_id_prefix or os.getenv("SIM_ORDER_ID_PREFIX") or f"sim_{uuid.uuid4().hex[:8]}"
         self._last_price = 0.0
 
     def set_last_price(self, price: float) -> None:
@@ -76,7 +86,7 @@ class SimulatedExchange(Exchange):
         order.price = px
         
         self._order_id += 1
-        order_id = f"sim_{self._order_id}"
+        order_id = f"{self._order_id_prefix}_{self._order_id}"
         self._orders[order_id] = order
         return order_id
 
