@@ -15,6 +15,13 @@ from domain.portfolio.portfolio_manager import PortfolioManager
 logger = logging.getLogger(__name__)
 
 
+def _to_naive_utc(value) -> pd.Timestamp:
+    ts = pd.Timestamp(value)
+    if ts.tzinfo is not None:
+        ts = ts.tz_convert(None)
+    return ts
+
+
 class PaperWarmupCatchup:
     """Replay warmup candles for restored paper positions, exit-only."""
 
@@ -48,9 +55,9 @@ class PaperWarmupCatchup:
                 logger.warning("[%s] paper catch-up skipped | reason=barriers_missing", position.symbol)
                 continue
 
-            entry_ts = pd.to_datetime(position.meta.get("entry_ts"))
+            entry_ts = _to_naive_utc(position.meta.get("entry_ts"))
             replay = frame.copy()
-            replay["timestamp"] = pd.to_datetime(replay["timestamp"])
+            replay["timestamp"] = pd.to_datetime(replay["timestamp"]).map(_to_naive_utc)
             replay = replay[replay["timestamp"] > entry_ts].sort_values("timestamp")
             if replay.empty:
                 logger.info("[%s] paper catch-up skipped | reason=no_candles_after_entry | entry_ts=%s", position.symbol, entry_ts)

@@ -4,10 +4,11 @@ import pandas as pd
 import pytest
 
 from core.types.commands import CancelOrderCommand, PlaceOrderCommand
-from core.types.domain_types import Order
-from core.types.enums import OrderSide
+from core.types.domain_types import Order, Position
+from core.types.enums import OrderSide, PositionSide
 from core.types.events import FillEvent, OrderAcceptedEvent, OrderCancelledEvent, OrderRejectedEvent
 from core.types.order_flags import ORDER_META_FILL_PRICE_FINAL
+from domain.portfolio.portfolio_manager import PortfolioManager
 from infrastructure.exchanges.simulation.simulated_exchange import SimulatedExchange
 
 
@@ -84,3 +85,48 @@ def test_cancel_order_lifecycle_reports_success_and_unknown_order_failure() -> N
     assert success[0].reason == "user"
     assert isinstance(failure[0], OrderRejectedEvent)
     assert failure[0].reason == "cancel failed: missing"
+
+
+def test_one_minute_exit_event_closes_long_position_on_take_profit() -> None:
+    class ExitManager:
+        def check_causal_exit(self, **_kwargs):
+            return 102.0, "TP"
+
+    event = type(
+        "Kline",
+        (),
+        {
+            "open_price": 100.0,
+            "high_price": 103.0,
+            "low_price": 99.0,
+            "end_ms": 1_704_067_200_000,
+        },
+    )()
+    portfolio = PortfolioManager(
+        cash={"USDT": 1000.0},
+        positions=[
+            Position(
+                "BTC/USDT",
+                PositionSide.LONG,
+                amount=1.0,
+                entry_price=100.0,
+                meta={"barrier_stop_pct": 0.01, "barrier_take_pct": 0.02},
+            )
+        ],
+    )
+    exchange = SimulatedExchange(
+        commission=0.0,
+        slippage=0.0,
+        execution_price_source=None,
+        portfolio=portfolio,
+        exit_manager=ExitManager(),
+    )
+
+    fill = asyncio.run(exchange._exit_event_for_kline(portfolio.positions[0], event))
+
+    assert isinstance(fill, FillEvent)
+    assert fill.symbol == "BTC/USDT"
+    assert fill.side == OrderSide.SELL
+    assert fill.price == pytest.approx(102.0)
+    assert fill.command_reason == "TP"
+    assert fill.meta[ORDER_META_FILL_PRICE_FINAL] is True

@@ -107,3 +107,41 @@ def test_paper_warmup_catchup_skips_when_entry_is_after_warmup() -> None:
 
     assert exit_manager.calls == []
     assert engine.commands == []
+
+
+def test_paper_warmup_catchup_compares_timezone_aware_entry_with_naive_frame() -> None:
+    portfolio = PortfolioManager(
+        cash={"USDT": 100.0},
+        positions=[
+            Position(
+                "ETH/USDT",
+                PositionSide.SHORT,
+                amount=0.25,
+                entry_price=2000.0,
+                meta={
+                    "entry_ts": "2024-01-01T00:00:00+00:00",
+                    "barrier_stop_pct": 0.01,
+                    "barrier_take_pct": 0.02,
+                },
+            )
+        ],
+    )
+    frame = pd.DataFrame(
+        [
+            {"timestamp": pd.Timestamp("2024-01-01T00:00:00"), "open": 2000.0, "high": 2010.0, "low": 1990.0, "close": 2005.0, "volume": 1.0},
+            {"timestamp": pd.Timestamp("2024-01-01T01:00:00"), "open": 2005.0, "high": 2008.0, "low": 1950.0, "close": 1960.0, "volume": 1.0},
+        ]
+    )
+    engine = FakeEngine()
+    exit_manager = FakeExitManager(close_on_low=1950.0)
+
+    asyncio.run(
+        PaperWarmupCatchup(
+            portfolio=portfolio,
+            engine=engine,
+            exit_manager=exit_manager,
+        ).run({"ETH/USDT": frame})
+    )
+
+    assert len(exit_manager.calls) == 1
+    assert engine.commands[0].reason == "TP"

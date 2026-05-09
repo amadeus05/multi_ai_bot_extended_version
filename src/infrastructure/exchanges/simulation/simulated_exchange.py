@@ -1,9 +1,14 @@
+import asyncio
 import inspect
+import logging
 import os
+import queue
 import uuid
+from collections.abc import AsyncIterator
 from collections.abc import Callable
 
 import numpy as np
+import pandas as pd
 
 from core.interfaces.exchange import Exchange
 from core.types.commands import CancelOrderCommand, PlaceOrderCommand
@@ -12,6 +17,12 @@ from core.types.enums import OrderSide, OrderStatus
 from core.types.events import TradingEvent
 from core.types.execution_event_factory import ExecutionEventFactory
 from core.types.order_flags import ORDER_META_FILL_PRICE_FINAL
+from domain.execution.execution_service import ExecutionService
+from domain.execution.exit_manager import ExitManager
+from domain.portfolio.portfolio_manager import PortfolioManager
+from infrastructure.exchanges.bybit.bybit_kline_stream import BybitKlineStream
+
+logger = logging.getLogger(__name__)
 
 # Order.meta: цена закрытия уже включает модельный slippage (например ExitManager / resolve_trade_exit);
 # get_order_status не сдвигает avg_price второй раз — иначе paper diverges от бэктеста.
@@ -28,6 +39,11 @@ class SimulatedExchange(Exchange):
         leverage: float = 1.0,
         order_id_prefix: str | None = None,
         execution_price_source: Callable[[str, OrderSide], float] | None = None,
+        portfolio: PortfolioManager | None = None,
+        exit_manager: ExitManager | None = None,
+        execution: ExecutionService | None = None,
+        exit_ws_url: str | None = None,
+        exit_timeframe: str = "1m",
     ):
         self._commission = float(commission)
         self._slippage = float(slippage)
@@ -36,6 +52,11 @@ class SimulatedExchange(Exchange):
         self._order_id = 0
         self._order_id_prefix = order_id_prefix or os.getenv("SIM_ORDER_ID_PREFIX") or f"sim_{uuid.uuid4().hex[:8]}"
         self._execution_price_source = execution_price_source
+        self._portfolio = portfolio
+        self._exit_manager = exit_manager
+        self._execution = execution
+        self._exit_timeframe = exit_timeframe
+        self._exit_stream = BybitKlineStream(url=exit_ws_url) if exit_ws_url else None
         self._last_price = 0.0
 
     def set_last_price(self, price: float) -> None:
@@ -167,6 +188,106 @@ class SimulatedExchange(Exchange):
 
         events.append(ExecutionEventFactory.fill_from_status(command, order_id, status, event_ts))
         return events
+
+    async def stream_execution_events(self) -> AsyncIterator[TradingEvent]:
+        if self._portfolio is None or self._exit_manager is None or self._execution is None or self._exit_stream is None:
+            return
+
+        stream = self._exit_stream
+        loop = asyncio.get_running_loop()
+        subscribed_symbols: set[str] = set()
+        stream.start()
+        connected = await loop.run_in_executor(None, stream.wait_until_connected, 15.0)
+        if not connected:
+            stream.stop()
+            raise RuntimeError("Paper 1m exit websocket connection timeout")
+
+        try:
+            while True:
+                open_symbols = {position.symbol for position in self._portfolio.get_open_positions()}
+                if open_symbols != subscribed_symbols:
+                    topics = {
+                        f"kline.{self._exit_interval()}.{symbol.replace('/', '').replace('-', '').upper()}"
+                        for symbol in open_symbols
+                    }
+                    stream.sync_topics(topics)
+                    subscribed_symbols = open_symbols
+                    logger.info("Paper 1m exit monitor topics synced | symbols=%s", ",".join(sorted(open_symbols)) or "-")
+
+                try:
+                    event = await loop.run_in_executor(None, stream.get_event, 1.0)
+                except queue.Empty:
+                    continue
+
+                symbol = self._from_api_symbol(event.symbol)
+                position = self._portfolio.get_position(symbol)
+                if position is None:
+                    continue
+
+                fill_event = await self._exit_event_for_kline(position, event)
+                if fill_event is not None:
+                    yield fill_event
+        finally:
+            stream.stop()
+
+    def _exit_interval(self) -> str:
+        return {"1m": "1", "3m": "3", "5m": "5"}.get(self._exit_timeframe, self._exit_timeframe)
+
+    @staticmethod
+    def _from_api_symbol(symbol: str) -> str:
+        upper = str(symbol).upper()
+        if upper.endswith("USDT") and "/" not in upper:
+            return f"{upper[:-4]}/USDT"
+        return upper
+
+    async def _exit_event_for_kline(self, position: Position, event) -> TradingEvent | None:
+        meta = position.meta or {}
+        if meta.get("barrier_stop_pct") is None or meta.get("barrier_take_pct") is None:
+            return None
+
+        exit_price, reason = self._exit_manager.check_causal_exit(
+            position=position,
+            next_open=float(event.open_price),
+            next_high=float(event.high_price),
+            next_low=float(event.low_price),
+            stop_pct=float(meta["barrier_stop_pct"]),
+            take_pct=float(meta["barrier_take_pct"]),
+        )
+        if exit_price is None:
+            return None
+
+        side = OrderSide.SELL if position.side.value == "long" else OrderSide.BUY
+        order = Order(
+            symbol=position.symbol,
+            side=side,
+            amount=float(position.amount),
+            price=float(exit_price),
+            meta={
+                ORDER_META_FILL_PRICE_FINAL: True,
+                "_engine_exit_reason": reason,
+                "_engine_reason_suffix": "1M",
+            },
+        )
+        command = PlaceOrderCommand(
+            order,
+            reason=reason,
+            ts=pd.to_datetime(event.end_ms, unit="ms", utc=True).tz_convert(None),
+        )
+        events = (
+            await self._execution.execute(command, self)
+            if self._execution is not None
+            else await self.submit_order_lifecycle(command)
+        )
+        for item in events:
+            if getattr(item, "symbol", None) == position.symbol and item.__class__.__name__ == "FillEvent":
+                logger.info(
+                    "[%s] paper 1m exit hit | reason=%s | price=%.8f",
+                    position.symbol,
+                    reason,
+                    float(exit_price),
+                )
+                return item
+        return None
 
     async def cancel_order_lifecycle(self, command: CancelOrderCommand) -> list[TradingEvent]:
         event_ts = ExecutionEventFactory.event_ts(command.ts)

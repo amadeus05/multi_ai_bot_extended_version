@@ -24,15 +24,20 @@ async def main() -> None:
     trading = settings.trading
     model = load_default_lightgbm_model(cwd=Path.cwd(), model_path_cfg=trading.model_path, required_bars=250)
     price_service = BybitService()
+    portfolio = PortfolioManager(cash={"USDT": float(trading.initial_capital)})
+    exit_manager = ExitManager(slippage=float(trading.costs.slippage))
+    order_intent_store = build_order_intent_store(storage)
+    execution = ExecutionService(order_intent_store=order_intent_store)
     exchange = SimulatedExchange(
         commission=float(trading.costs.taker_com),
         slippage=float(trading.costs.slippage),
         leverage=float(trading.leverage),
         execution_price_source=lambda symbol, side: price_service.fetch_execution_price(symbol, side.value),
+        portfolio=portfolio,
+        exit_manager=exit_manager,
+        execution=execution,
+        exit_ws_url=settings.ws_url,
     )
-    portfolio = PortfolioManager(cash={"USDT": float(trading.initial_capital)})
-    order_intent_store = build_order_intent_store(storage)
-    execution = ExecutionService(order_intent_store=order_intent_store)
     orchestrator = build_realtime_orchestrator(
         settings=settings,
         exchange=exchange,
@@ -42,10 +47,11 @@ async def main() -> None:
         storage=storage,
         state_restorer_factory=lambda **deps: PaperStateRestorer(
             storage=storage,
-            exit_manager=ExitManager(slippage=float(trading.costs.slippage)),
+            exit_manager=exit_manager,
             **deps,
         ),
     )
+    orchestrator.set_execution_event_source(exchange.stream_execution_events)
     await orchestrator.run()
 
 
