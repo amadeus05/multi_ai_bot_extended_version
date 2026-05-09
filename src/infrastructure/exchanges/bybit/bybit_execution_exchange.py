@@ -205,6 +205,25 @@ class BybitExecutionExchange(Exchange):
             return 0.0
         return float(rows[0].get("lastPrice") or rows[0].get("markPrice") or 0.0)
 
+    async def prepare_market_order(self, order: Order) -> None:
+        response = self.client.get(
+            "/v5/market/tickers",
+            {"category": self.mapper.category, "symbol": self.mapper.to_api_symbol(order.symbol)},
+            signed=False,
+            request_name="ticker",
+        )
+        rows = (response.get("result") or {}).get("list") or []
+        if not rows:
+            raise RuntimeError(f"Bybit ticker returned no rows for {order.symbol}")
+
+        row = rows[0]
+        preferred_key = "ask1Price" if order.side.value == "buy" else "bid1Price"
+        raw_price = row.get(preferred_key) or row.get("lastPrice") or row.get("markPrice")
+        price = float(raw_price)
+        if price <= 0:
+            raise RuntimeError(f"Bybit ticker returned invalid {preferred_key} for {order.symbol}: {raw_price!r}")
+        order.price = price
+
     async def get_order_status(self, order_id: str) -> dict:
         params = {"category": self.mapper.category}
         if order_id.startswith("link:"):

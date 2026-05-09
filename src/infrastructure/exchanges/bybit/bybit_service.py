@@ -108,6 +108,23 @@ class BybitService:
         all_klines.sort(key=lambda candle: candle.open_time)
         return all_klines
 
+    def fetch_execution_price(self, symbol: str, side: str) -> float:
+        normalized_symbol = self.normalize_symbol(symbol)
+        api_symbol = self.mapper.to_api_symbol(normalized_symbol)
+        payload = self.adapter.fetch_ticker(api_symbol)
+        rows = payload.get("result", {}).get("list", [])
+        if not rows:
+            raise RuntimeError(f"Bybit ticker returned no rows for {normalized_symbol}")
+
+        row = rows[0]
+        side_key = side.strip().lower()
+        preferred_key = "ask1Price" if side_key == "buy" else "bid1Price"
+        raw_price = row.get(preferred_key) or row.get("lastPrice") or row.get("markPrice")
+        price = float(raw_price)
+        if price <= 0:
+            raise RuntimeError(f"Bybit ticker returned invalid {preferred_key} for {normalized_symbol}: {raw_price!r}")
+        return price
+
     def fetch_premium_index_klines(
         self,
         symbol: str,

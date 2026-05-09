@@ -122,7 +122,13 @@ class FakeExitManager:
 
 
 class NoopExchange:
-    pass
+    def __init__(self) -> None:
+        self.execution_prices: dict[tuple[str, OrderSide], float] = {}
+
+    async def prepare_market_order(self, order: Order) -> None:
+        price = self.execution_prices.get((order.symbol, order.side))
+        if price is not None:
+            order.price = price
 
 
 class NoopExecution:
@@ -197,9 +203,10 @@ def make_engine(
     notifier: Notifier | None = None,
     model=None,
     execution=None,
+    exchange=None,
 ) -> TradingEngine:
     return TradingEngine(
-        exchange=NoopExchange(),
+        exchange=exchange or NoopExchange(),
         data_provider=data or FakeDataProvider(),
         model=model or FakeModel(),
         strategy=FakeStrategy(),
@@ -233,6 +240,19 @@ def test_market_event_without_position_builds_entry_command_with_prediction_meta
     assert command.order.meta["signal_gap"] == pytest.approx(0.44)
     assert command.order.meta["direction_prob"] == pytest.approx(0.72)
     assert risk.checked_orders == [command.order]
+
+
+def test_entry_order_uses_fresh_execution_price_before_risk_sizing() -> None:
+    exchange = NoopExchange()
+    exchange.execution_prices[("BTC/USDT", OrderSide.BUY)] = 101.25
+    risk = FakeRisk()
+    engine = make_engine(exchange=exchange, risk=risk)
+
+    commands = asyncio.run(engine.process_event(MarketEvent(make_tick())))
+
+    assert len(commands) == 1
+    assert commands[0].order.price == pytest.approx(101.25)
+    assert risk.checked_orders[0].price == pytest.approx(101.25)
 
 
 def test_valid_entry_signal_is_notified_after_risk_check() -> None:

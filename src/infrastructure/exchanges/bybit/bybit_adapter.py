@@ -31,6 +31,7 @@ class BybitAdapter:
         )
         self.open_interest_url = os.getenv("BYBIT_OPEN_INTEREST_URL", "https://api.bybit.com/v5/market/open-interest")
         self.funding_rate_url = os.getenv("BYBIT_FUNDING_RATE_URL", "https://api.bybit.com/v5/market/funding/history")
+        self.tickers_url = os.getenv("BYBIT_TICKERS_URL", "https://api.bybit.com/v5/market/tickers")
         self.category = category or os.getenv("BYBIT_CATEGORY", "linear")
         self.limit = min(1000, max(1, int(limit if limit is not None else os.getenv("BYBIT_LIMIT", "1000"))))
         self.funding_limit = min(
@@ -114,6 +115,17 @@ class BybitAdapter:
             self.kline_url,
             params,
             f"{api_symbol}-{interval}-{window_start}-{window_end}",
+        )
+
+    def fetch_ticker(self, api_symbol: str) -> dict:
+        params = {
+            "category": self.category,
+            "symbol": api_symbol,
+        }
+        return self.request_json(
+            self.tickers_url,
+            params,
+            f"{api_symbol}-ticker",
         )
 
     def fetch_funding_rate_window(

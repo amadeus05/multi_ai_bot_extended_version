@@ -4,6 +4,9 @@ from core.types.domain_types import Order, Position
 
 
 class Exchange(ABC):
+    async def prepare_market_order(self, order: Order) -> None:
+        return None
+
     @abstractmethod
     async def place_order(self, order: Order) -> str:
         raise NotImplementedError

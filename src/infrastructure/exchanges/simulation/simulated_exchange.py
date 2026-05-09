@@ -1,5 +1,7 @@
+import inspect
 import os
 import uuid
+from collections.abc import Callable
 
 import numpy as np
 
@@ -25,6 +27,7 @@ class SimulatedExchange(Exchange):
         slippage: float = 0.0003,
         leverage: float = 1.0,
         order_id_prefix: str | None = None,
+        execution_price_source: Callable[[str, OrderSide], float] | None = None,
     ):
         self._commission = float(commission)
         self._slippage = float(slippage)
@@ -32,6 +35,7 @@ class SimulatedExchange(Exchange):
         self._orders: dict[str, Order] = {}
         self._order_id = 0
         self._order_id_prefix = order_id_prefix or os.getenv("SIM_ORDER_ID_PREFIX") or f"sim_{uuid.uuid4().hex[:8]}"
+        self._execution_price_source = execution_price_source
         self._last_price = 0.0
 
     def set_last_price(self, price: float) -> None:
@@ -47,6 +51,22 @@ class SimulatedExchange(Exchange):
         if side == OrderSide.BUY:
             return float(ref * (1.0 + self._slippage))
         return float(ref * (1.0 - self._slippage))
+
+    async def prepare_market_order(self, order: Order) -> None:
+        if self._execution_price_source is None:
+            return
+
+        price = self._execution_price_source(order.symbol, order.side)
+        if inspect.isawaitable(price):
+            price = await price
+        price = float(price)
+        if not np.isfinite(price) or price <= 0:
+            raise ValueError(f"invalid simulated execution price: {price!r}")
+        order.meta = order.meta or {}
+        order.meta.setdefault("signal_price", order.price)
+        order.meta["execution_price"] = price
+        order.meta["execution_price_refreshed"] = True
+        order.price = price
 
     def net_pnl_pct_round_trip(self, direction: int, entry_price: float, exit_price: float) -> float:
         """direction: 1 long, -1 short. Доходность с вычетом 2 * taker (как бэктест)."""

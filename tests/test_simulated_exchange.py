@@ -12,14 +12,14 @@ from infrastructure.exchanges.simulation.simulated_exchange import SimulatedExch
 
 
 def test_market_fill_price_applies_side_dependent_slippage() -> None:
-    exchange = SimulatedExchange(slippage=0.01)
+    exchange = SimulatedExchange(slippage=0.01, execution_price_source=None)
 
     assert exchange.market_fill_price(100.0, OrderSide.BUY) == pytest.approx(101.0)
     assert exchange.market_fill_price(100.0, OrderSide.SELL) == pytest.approx(99.0)
 
 
 def test_order_status_applies_slippage_and_taker_fee_to_regular_market_order() -> None:
-    exchange = SimulatedExchange(commission=0.001, slippage=0.01)
+    exchange = SimulatedExchange(commission=0.001, slippage=0.01, execution_price_source=None)
     order = Order("BTC/USDT", OrderSide.BUY, amount=2.0, price=100.0)
 
     order_id = asyncio.run(exchange.place_order(order))
@@ -31,7 +31,7 @@ def test_order_status_applies_slippage_and_taker_fee_to_regular_market_order() -
 
 
 def test_order_status_does_not_apply_slippage_when_fill_price_is_final() -> None:
-    exchange = SimulatedExchange(commission=0.001, slippage=0.01)
+    exchange = SimulatedExchange(commission=0.001, slippage=0.01, execution_price_source=None)
     order = Order(
         "BTC/USDT",
         OrderSide.SELL,
@@ -48,7 +48,12 @@ def test_order_status_does_not_apply_slippage_when_fill_price_is_final() -> None
 
 
 def test_submit_order_lifecycle_returns_accepted_and_fill_events() -> None:
-    exchange = SimulatedExchange(commission=0.001, slippage=0.01)
+    exchange = SimulatedExchange(
+        commission=0.001,
+        slippage=0.01,
+        order_id_prefix="sim",
+        execution_price_source=None,
+    )
     order = Order("BTC/USDT", OrderSide.BUY, amount=2.0, price=100.0, client_order_id="client-1")
     command = PlaceOrderCommand(order, reason="ENTRY", ts=pd.Timestamp("2024-01-01T00:00:00"))
 
@@ -67,7 +72,7 @@ def test_submit_order_lifecycle_returns_accepted_and_fill_events() -> None:
 
 
 def test_cancel_order_lifecycle_reports_success_and_unknown_order_failure() -> None:
-    exchange = SimulatedExchange()
+    exchange = SimulatedExchange(execution_price_source=None)
     order = Order("BTC/USDT", OrderSide.BUY, amount=1.0, price=100.0)
     order_id = asyncio.run(exchange.place_order(order))
 
