@@ -171,7 +171,6 @@ class SupabaseTradingReadModelRepository:
             "side": order.side.value,
             "order_type": order.type.value,
             "status": "accepted",
-            "reason": None,
             "amount": float(order.amount),
             "price": float(order.price) if order.price is not None else None,
             "created_ts": _ts(event.ts),
