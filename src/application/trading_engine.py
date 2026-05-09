@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from application.event_journal import EventJournal
 from application.execution_event_deduplicator import ExecutionEventDeduplicator
 from core.interfaces.data_provider import DataProvider
+from core.interfaces.execution_lifecycle import MarketOrderPreparationExchange
 from core.interfaces.exchange import Exchange
 from core.interfaces.model import Model
 from core.interfaces.notifier import Notifier
@@ -303,7 +304,8 @@ class TradingEngine:
         portfolio = self._deps["portfolio"]
 
         raw_order = candidate.order
-        await exchange.prepare_market_order(raw_order)
+        if isinstance(exchange, MarketOrderPreparationExchange):
+            await exchange.prepare_market_order(raw_order)
         safe_order = risk.check(raw_order, portfolio, exchange)
         if safe_order is None:
             return None

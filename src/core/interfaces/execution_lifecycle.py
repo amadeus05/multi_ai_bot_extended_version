@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Protocol, runtime_checkable
 
 from core.types.commands import CancelOrderCommand, PlaceOrderCommand
+from core.types.domain_types import Order
 from core.types.events import TradingEvent
 
 
@@ -14,4 +15,12 @@ class ExecutionLifecycleExchange(Protocol):
         ...
 
     async def cancel_order_lifecycle(self, command: CancelOrderCommand) -> list[TradingEvent]:
+        ...
+
+
+@runtime_checkable
+class MarketOrderPreparationExchange(Protocol):
+    """Optional exchange capability for adjusting market-order references before sizing."""
+
+    async def prepare_market_order(self, order: Order) -> None:
         ...
