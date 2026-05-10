@@ -1,0 +1,17 @@
+.git
+.gitignore
+.env
+.venv
+venv
+.temp_code
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite
+*.sqlite3
+render-data
+backtest_charts
+bt_output.txt
+image.png

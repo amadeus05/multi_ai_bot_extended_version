@@ -47,6 +47,10 @@ def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _run_paper_in_thread() -> None:
+    asyncio.run(run_paper_main())
+
+
 def _task_status(task: asyncio.Task[None] | None) -> dict[str, Any]:
     if task is None:
         return {"running": False, "status": "not_started", "error": None}
@@ -84,7 +88,7 @@ async def lifespan(app: FastAPI):
     app.state.started_at_utc = _utc_now()
     logger.info("FastAPI startup | service=light-paper-web")
     logger.info("Paper trading startup requested | runner=%s", PROJECT_ROOT / "runners" / "run_paper.py")
-    app.state.paper_task = asyncio.create_task(run_paper_main(), name="paper-trading")
+    app.state.paper_task = asyncio.create_task(asyncio.to_thread(_run_paper_in_thread), name="paper-trading")
     app.state.paper_task.add_done_callback(_log_paper_task_result)
     logger.info("Paper trading task started | task_name=%s", app.state.paper_task.get_name())
 
