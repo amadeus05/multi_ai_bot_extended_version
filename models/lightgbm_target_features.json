@@ -11,7 +11,6 @@
     "funding_rate_8h",
     "market_breadth_ema_fast_slow_1h",
     "market_breadth_pos_return_4h_3",
-    "mcc_sign_agreement_btc_24h",
     "premium_index_change_24h",
     "price_position_1h",
     "price_position_4h",
@@ -25,7 +24,10 @@
   "symbols": [
     "BTC/USDT",
     "ETH/USDT",
-    "SOL/USDT"
+    "SOL/USDT",
+    "ADA/USDT",
+    "XRP/USDT",
+    "DOGE/USDT"
   ],
   "label_mapping": {
     "short": 0,

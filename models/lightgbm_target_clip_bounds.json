@@ -1,0 +1,82 @@
+{
+  "adx_4h": {
+    "lower": 9.568884276788921,
+    "upper": 61.18594052577407
+  },
+  "atr_ratio_1h": {
+    "lower": 0.5070943658379643,
+    "upper": 1.6577436183517775
+  },
+  "cross_sectional_rank_ema_fast_slow_1h": {
+    "lower": 0.0,
+    "upper": 1.0
+  },
+  "distance_to_resistance_1h": {
+    "lower": 0.12893483248232987,
+    "upper": 6.850003080346708
+  },
+  "distance_to_support_1h": {
+    "lower": 0.17717535686105737,
+    "upper": 7.526162706547308
+  },
+  "ema_fast_slow": {
+    "lower": -0.04492846370628514,
+    "upper": 0.05244864959893358
+  },
+  "ema_slope_4h": {
+    "lower": -0.24985812196816823,
+    "upper": 0.2955208851819837
+  },
+  "flat_efficiency_1h_24": {
+    "lower": 0.36455566910345827,
+    "upper": 0.9968454258675082
+  },
+  "funding_rate_8h": {
+    "lower": -0.0001617,
+    "upper": 0.00063559
+  },
+  "market_breadth_ema_fast_slow_1h": {
+    "lower": 0.0,
+    "upper": 1.0
+  },
+  "market_breadth_pos_return_4h_3": {
+    "lower": 0.0,
+    "upper": 1.0
+  },
+  "premium_index_change_24h": {
+    "lower": -0.0008022993999999999,
+    "upper": 0.0008266856000000006
+  },
+  "price_position_1h": {
+    "lower": 0.03509974210030177,
+    "upper": 0.9757232199419561
+  },
+  "price_position_4h": {
+    "lower": 0.036830357142856845,
+    "upper": 0.9746229351209001
+  },
+  "range_center_distance_atr_1h_48": {
+    "lower": -4.276660636947125,
+    "upper": 4.9019278688194206
+  },
+  "realized_vol_4h_returns_20": {
+    "lower": 0.0035669535439554288,
+    "upper": 0.03888013114646918
+  },
+  "return_4h_14": {
+    "lower": -0.13748665269199045,
+    "upper": 0.17658703429217137
+  },
+  "rsi_1h": {
+    "lower": 22.061108691491416,
+    "upper": 79.47493415451248
+  },
+  "volatility_regime_change_1h": {
+    "lower": 0.48582529419683707,
+    "upper": 1.790787667857264
+  },
+  "zscore_vs_vwap_4h": {
+    "lower": -2.497496695018538,
+    "upper": 2.62302038029063
+  }
+}

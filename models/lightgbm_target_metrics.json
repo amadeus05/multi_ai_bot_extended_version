@@ -1,104 +1,104 @@
 {
   "oos_metrics": {
-    "accuracy": 0.5581616913165774,
-    "balanced_accuracy": 0.5582280816311043,
-    "f1_macro": 0.5581573615567268,
-    "roc_auc": 0.5717893215932592,
-    "pr_auc": 0.5446756894670375,
-    "mcc": 0.11644819069989538,
+    "accuracy": 0.5663019128037222,
+    "balanced_accuracy": 0.5659088940631716,
+    "f1_macro": 0.5659116371150106,
+    "roc_auc": 0.582155502370842,
+    "pr_auc": 0.5548480468480972,
+    "mcc": 0.13186688330821075,
     "confusion_matrix": [
       [
-        6186,
-        4990
+        13841,
+        9923
       ],
       [
-        4749,
-        6117
+        10211,
+        12449
       ]
     ],
     "classification_report": {
       "short": {
-        "precision": 0.5657064471879286,
-        "recall": 0.5535075161059413,
-        "f1-score": 0.5595405002035186,
-        "support": 11176.0
+        "precision": 0.5754615000831532,
+        "recall": 0.5824356168995118,
+        "f1-score": 0.5789275556299147,
+        "support": 23764.0
       },
       "long": {
-        "precision": 0.5507337714954533,
-        "recall": 0.5629486471562672,
-        "f1-score": 0.556774222909935,
-        "support": 10866.0
+        "precision": 0.556454496692294,
+        "recall": 0.5493821712268314,
+        "f1-score": 0.5528957186001066,
+        "support": 22660.0
       },
-      "accuracy": 0.5581616913165774,
+      "accuracy": 0.5663019128037222,
       "macro avg": {
-        "precision": 0.558220109341691,
-        "recall": 0.5582280816311043,
-        "f1-score": 0.5581573615567268,
-        "support": 22042.0
+        "precision": 0.5659579983877236,
+        "recall": 0.5659088940631716,
+        "f1-score": 0.5659116371150106,
+        "support": 46424.0
       },
       "weighted avg": {
-        "precision": 0.5583253976427677,
-        "recall": 0.5581616913165774,
-        "f1-score": 0.5581768141009835,
-        "support": 22042.0
+        "precision": 0.5661839992896656,
+        "recall": 0.5663019128037222,
+        "f1-score": 0.566221166109506,
+        "support": 46424.0
       }
     },
     "probability_threshold_metrics": {
       "0.55": {
-        "rows": 9347,
-        "coverage": 0.4240540785772616,
-        "long_signals": 4727,
-        "short_signals": 4620,
-        "no_trade": 12695,
-        "signal_accuracy": 0.5762276666310046,
-        "signal_balanced_accuracy": 0.576682369658468,
-        "signal_f1_macro": 0.5760841203009155,
-        "long_precision": 0.5515125872646499,
-        "short_precision": 0.6015151515151516,
-        "long_recall_all": 0.2399226946438432,
-        "short_recall_all": 0.24865783822476736
+        "rows": 23259,
+        "coverage": 0.5010124073754955,
+        "long_signals": 11627,
+        "short_signals": 11632,
+        "no_trade": 23165,
+        "signal_accuracy": 0.5865256459864998,
+        "signal_balanced_accuracy": 0.5865744743875736,
+        "signal_f1_macro": 0.5864631194696439,
+        "long_precision": 0.5743527995183624,
+        "short_precision": 0.5986932599724897,
+        "long_recall_all": 0.2947043248014122,
+        "short_recall_all": 0.29304830836559503
       },
       "0.60": {
-        "rows": 3402,
-        "coverage": 0.15434171127846838,
-        "long_signals": 1598,
-        "short_signals": 1804,
-        "no_trade": 18640,
-        "signal_accuracy": 0.5755437977660199,
-        "signal_balanced_accuracy": 0.5737169953464064,
-        "signal_f1_macro": 0.5736287084628724,
-        "long_precision": 0.5413016270337923,
-        "short_precision": 0.6058758314855875,
-        "long_recall_all": 0.07960611080434382,
-        "short_recall_all": 0.09779885468861847
+        "rows": 8305,
+        "coverage": 0.1788945373082888,
+        "long_signals": 3984,
+        "short_signals": 4321,
+        "no_trade": 38119,
+        "signal_accuracy": 0.6085490668272125,
+        "signal_balanced_accuracy": 0.6079062398345647,
+        "signal_f1_macro": 0.6079072840540278,
+        "long_precision": 0.5921184738955824,
+        "short_precision": 0.6236982180050914,
+        "long_recall_all": 0.10410414827890556,
+        "short_recall_all": 0.11340683386635246
       },
       "0.65": {
-        "rows": 1230,
-        "coverage": 0.05580255875147446,
-        "long_signals": 517,
-        "short_signals": 713,
-        "no_trade": 20812,
-        "signal_accuracy": 0.6593495934959349,
-        "signal_balanced_accuracy": 0.6547256097560976,
-        "signal_f1_macro": 0.6549429256838775,
-        "long_precision": 0.6499032882011605,
-        "short_precision": 0.6661991584852734,
-        "long_recall_all": 0.030922142462727776,
-        "short_recall_all": 0.04250178954903364
+        "rows": 2125,
+        "coverage": 0.045773737721868,
+        "long_signals": 1015,
+        "short_signals": 1110,
+        "no_trade": 44299,
+        "signal_accuracy": 0.636235294117647,
+        "signal_balanced_accuracy": 0.635374802094751,
+        "signal_f1_macro": 0.6342130924601077,
+        "long_precision": 0.5881773399014778,
+        "short_precision": 0.6801801801801802,
+        "long_recall_all": 0.026345984112974404,
+        "short_recall_all": 0.03177074566571284
       },
       "0.70": {
-        "rows": 429,
-        "coverage": 0.01946284366209963,
-        "long_signals": 219,
-        "short_signals": 210,
-        "no_trade": 21613,
-        "signal_accuracy": 0.675990675990676,
-        "signal_balanced_accuracy": 0.6760277559570569,
-        "signal_f1_macro": 0.6754192589689576,
-        "long_precision": 0.7031963470319634,
-        "short_precision": 0.6476190476190476,
-        "long_recall_all": 0.01417264862875023,
-        "short_recall_all": 0.012168933428775949
+        "rows": 549,
+        "coverage": 0.011825779769084955,
+        "long_signals": 303,
+        "short_signals": 246,
+        "no_trade": 45875,
+        "signal_accuracy": 0.7085610200364298,
+        "signal_balanced_accuracy": 0.7106098857294711,
+        "signal_f1_macro": 0.7082115333510497,
+        "long_precision": 0.6732673267326733,
+        "short_precision": 0.7520325203252033,
+        "long_recall_all": 0.009002647837599295,
+        "short_recall_all": 0.0077848846995455315
       }
     }
   },
@@ -106,31 +106,34 @@
     {
       "fold": 1,
       "split_mode": "monthly",
-      "train_rows": 4292,
-      "test_rows": 629,
-      "best_iteration": 120,
-      "accuracy": 0.5532591414944356,
-      "roc_auc": 0.5205410506448569,
+      "train_rows": 8590,
+      "test_rows": 1378,
+      "best_iteration": 363,
+      "accuracy": 0.5435413642960812,
+      "roc_auc": 0.528562952414857,
       "purged_timestamps": 20,
       "timestamp_boundaries": {
-        "train_start": "2023-01-07T22:00:00.000000000",
+        "train_start": "2023-01-07T13:00:00.000000000",
         "train_end_before_purge": "2023-07-07T08:00:00.000000000",
         "train_end_after_purge": "2023-07-05T22:00:00.000000000",
-        "test_start": "2023-07-08T00:00:00.000000000",
-        "test_end": "2023-08-07T21:00:00.000000000",
-        "train_unique_timestamps_after_purge": 2243,
-        "test_unique_timestamps": 336
+        "test_start": "2023-07-07T23:00:00.000000000",
+        "test_end": "2023-08-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 3006,
+        "test_unique_timestamps": 527
       },
       "train_period": {
-        "start": "2023-01-07 22:00:00",
+        "start": "2023-01-07 13:00:00",
         "end": "2023-07-05 22:00:00"
       },
       "test_period": {
-        "start": "2023-07-08 00:00:00",
-        "end": "2023-08-07 21:00:00"
+        "start": "2023-07-07 23:00:00",
+        "end": "2023-08-07 12:00:00"
       },
       "internal_eval": {
-        "internal_eval_size": 643,
+        "internal_eval_size": 1288,
+        "eval_rows": 1288,
+        "fit_pos_rate": 0.5201314708299096,
+        "eval_pos_rate": 0.49611801242236025,
         "fallback_used": false,
         "fallback_n_estimators": null
       }
@@ -138,63 +141,69 @@
     {
       "fold": 2,
       "split_mode": "monthly",
-      "train_rows": 4921,
-      "test_rows": 644,
-      "best_iteration": 150,
-      "accuracy": 0.39751552795031053,
-      "roc_auc": 0.39161241664020324,
+      "train_rows": 9954,
+      "test_rows": 1332,
+      "best_iteration": 177,
+      "accuracy": 0.5608108108108109,
+      "roc_auc": 0.5602409341742215,
       "purged_timestamps": 20,
       "timestamp_boundaries": {
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2023-08-07T21:00:00.000000000",
-        "train_end_after_purge": "2023-08-06T20:00:00.000000000",
-        "test_start": "2023-08-07T22:00:00.000000000",
-        "test_end": "2023-09-07T21:00:00.000000000",
-        "train_unique_timestamps_after_purge": 2579,
-        "test_unique_timestamps": 371
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2023-08-07T12:00:00.000000000",
+        "train_end_after_purge": "2023-08-06T15:00:00.000000000",
+        "test_start": "2023-08-07T13:00:00.000000000",
+        "test_end": "2023-09-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 3533,
+        "test_unique_timestamps": 498
       },
       "train_period": {
-        "start": "2023-01-07 22:00:00",
-        "end": "2023-08-06 20:00:00"
+        "start": "2023-01-07 13:00:00",
+        "end": "2023-08-06 15:00:00"
       },
       "test_period": {
-        "start": "2023-08-07 22:00:00",
-        "end": "2023-09-07 21:00:00"
+        "start": "2023-08-07 13:00:00",
+        "end": "2023-09-07 12:00:00"
       },
       "internal_eval": {
-        "internal_eval_size": 984,
-        "fallback_used": true,
-        "fallback_n_estimators": 150
+        "internal_eval_size": 1990,
+        "eval_rows": 1990,
+        "fit_pos_rate": 0.5217227523857358,
+        "eval_pos_rate": 0.4452261306532663,
+        "fallback_used": false,
+        "fallback_n_estimators": null
       }
     },
     {
       "fold": 3,
       "split_mode": "monthly",
-      "train_rows": 5565,
-      "test_rows": 630,
-      "best_iteration": 36,
-      "accuracy": 0.5206349206349207,
-      "roc_auc": 0.5577328361838372,
+      "train_rows": 11322,
+      "test_rows": 1221,
+      "best_iteration": 171,
+      "accuracy": 0.4873054873054873,
+      "roc_auc": 0.5115673410466895,
       "purged_timestamps": 20,
       "timestamp_boundaries": {
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2023-09-07T21:00:00.000000000",
-        "train_end_after_purge": "2023-09-07T01:00:00.000000000",
-        "test_start": "2023-09-07T22:00:00.000000000",
-        "test_end": "2023-10-07T14:00:00.000000000",
-        "train_unique_timestamps_after_purge": 2950,
-        "test_unique_timestamps": 350
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2023-09-07T12:00:00.000000000",
+        "train_end_after_purge": "2023-09-06T06:00:00.000000000",
+        "test_start": "2023-09-07T13:00:00.000000000",
+        "test_end": "2023-10-07T01:00:00.000000000",
+        "train_unique_timestamps_after_purge": 4031,
+        "test_unique_timestamps": 447
       },
       "train_period": {
-        "start": "2023-01-07 22:00:00",
-        "end": "2023-09-07 01:00:00"
+        "start": "2023-01-07 13:00:00",
+        "end": "2023-09-06 06:00:00"
       },
       "test_period": {
-        "start": "2023-09-07 22:00:00",
-        "end": "2023-10-07 14:00:00"
+        "start": "2023-09-07 13:00:00",
+        "end": "2023-10-07 01:00:00"
       },
       "internal_eval": {
-        "internal_eval_size": 1669,
+        "internal_eval_size": 3962,
+        "eval_rows": 3962,
+        "fit_pos_rate": 0.5161684782608695,
+        "eval_pos_rate": 0.42781423523472994,
         "fallback_used": false,
         "fallback_n_estimators": null
       }
@@ -202,95 +211,104 @@
     {
       "fold": 4,
       "split_mode": "monthly",
-      "train_rows": 6199,
-      "test_rows": 699,
-      "best_iteration": 105,
-      "accuracy": 0.5107296137339056,
-      "roc_auc": 0.5425403225806451,
+      "train_rows": 12549,
+      "test_rows": 1439,
+      "best_iteration": 177,
+      "accuracy": 0.5455177206393329,
+      "roc_auc": 0.566917916992581,
       "purged_timestamps": 20,
       "timestamp_boundaries": {
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2023-10-07T14:00:00.000000000",
-        "train_end_after_purge": "2023-10-05T01:00:00.000000000",
-        "test_start": "2023-10-08T13:00:00.000000000",
-        "test_end": "2023-11-07T17:00:00.000000000",
-        "train_unique_timestamps_after_purge": 3300,
-        "test_unique_timestamps": 397
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2023-10-07T01:00:00.000000000",
+        "train_end_after_purge": "2023-10-05T08:00:00.000000000",
+        "test_start": "2023-10-07T14:00:00.000000000",
+        "test_end": "2023-11-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 4478,
+        "test_unique_timestamps": 552
       },
       "train_period": {
-        "start": "2023-01-07 22:00:00",
-        "end": "2023-10-05 01:00:00"
+        "start": "2023-01-07 13:00:00",
+        "end": "2023-10-05 08:00:00"
       },
       "test_period": {
-        "start": "2023-10-08 13:00:00",
-        "end": "2023-11-07 17:00:00"
+        "start": "2023-10-07 14:00:00",
+        "end": "2023-11-07 12:00:00"
       },
       "internal_eval": {
-        "internal_eval_size": 929,
-        "fallback_used": false,
-        "fallback_n_estimators": null
+        "internal_eval_size": 1882,
+        "eval_rows": 1882,
+        "fit_pos_rate": 0.49217211962126184,
+        "eval_pos_rate": 0.43783209351753455,
+        "fallback_used": true,
+        "fallback_n_estimators": 177
       }
     },
     {
       "fold": 5,
       "split_mode": "monthly",
-      "train_rows": 6899,
-      "test_rows": 796,
-      "best_iteration": 150,
-      "accuracy": 0.6331658291457286,
-      "roc_auc": 0.6348617054003411,
+      "train_rows": 13976,
+      "test_rows": 1444,
+      "best_iteration": 149,
+      "accuracy": 0.5367036011080333,
+      "roc_auc": 0.5509003512441818,
       "purged_timestamps": 20,
       "timestamp_boundaries": {
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2023-11-07T17:00:00.000000000",
-        "train_end_after_purge": "2023-11-05T07:00:00.000000000",
-        "test_start": "2023-11-08T06:00:00.000000000",
-        "test_end": "2023-12-07T20:00:00.000000000",
-        "train_unique_timestamps_after_purge": 3697,
-        "test_unique_timestamps": 461
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2023-11-07T12:00:00.000000000",
+        "train_end_after_purge": "2023-11-06T16:00:00.000000000",
+        "test_start": "2023-11-07T13:00:00.000000000",
+        "test_end": "2023-12-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 5030,
+        "test_unique_timestamps": 540
       },
       "train_period": {
-        "start": "2023-01-07 22:00:00",
-        "end": "2023-11-05 07:00:00"
+        "start": "2023-01-07 13:00:00",
+        "end": "2023-11-06 16:00:00"
       },
       "test_period": {
-        "start": "2023-11-08 06:00:00",
-        "end": "2023-12-07 20:00:00"
+        "start": "2023-11-07 13:00:00",
+        "end": "2023-12-07 12:00:00"
       },
       "internal_eval": {
-        "internal_eval_size": 2069,
-        "fallback_used": true,
-        "fallback_n_estimators": 150
+        "internal_eval_size": 3494,
+        "eval_rows": 3494,
+        "fit_pos_rate": 0.4967563442091204,
+        "eval_pos_rate": 0.540927303949628,
+        "fallback_used": false,
+        "fallback_n_estimators": null
       }
     },
     {
       "fold": 6,
       "split_mode": "monthly",
-      "train_rows": 7692,
-      "test_rows": 700,
-      "best_iteration": 45,
-      "accuracy": 0.5885714285714285,
-      "roc_auc": 0.6090259159964254,
+      "train_rows": 15424,
+      "test_rows": 1474,
+      "best_iteration": 149,
+      "accuracy": 0.5671641791044776,
+      "roc_auc": 0.5831992703477648,
       "purged_timestamps": 20,
       "timestamp_boundaries": {
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2023-12-07T20:00:00.000000000",
-        "train_end_after_purge": "2023-12-07T00:00:00.000000000",
-        "test_start": "2023-12-07T22:00:00.000000000",
-        "test_end": "2024-01-07T21:00:00.000000000",
-        "train_unique_timestamps_after_purge": 4158,
-        "test_unique_timestamps": 434
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2023-12-07T12:00:00.000000000",
+        "train_end_after_purge": "2023-12-06T15:00:00.000000000",
+        "test_start": "2023-12-07T13:00:00.000000000",
+        "test_end": "2024-01-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 5570,
+        "test_unique_timestamps": 564
       },
       "train_period": {
-        "start": "2023-01-07 22:00:00",
-        "end": "2023-12-07 00:00:00"
+        "start": "2023-01-07 13:00:00",
+        "end": "2023-12-06 15:00:00"
       },
       "test_period": {
-        "start": "2023-12-07 22:00:00",
-        "end": "2024-01-07 21:00:00"
+        "start": "2023-12-07 13:00:00",
+        "end": "2024-01-07 12:00:00"
       },
       "internal_eval": {
-        "internal_eval_size": 2692,
+        "internal_eval_size": 5398,
+        "eval_rows": 5398,
+        "fit_pos_rate": 0.5027927388789148,
+        "eval_pos_rate": 0.5411263430900334,
         "fallback_used": false,
         "fallback_n_estimators": null
       }
@@ -298,31 +316,34 @@
     {
       "fold": 7,
       "split_mode": "monthly",
-      "train_rows": 8386,
-      "test_rows": 724,
-      "best_iteration": 87,
-      "accuracy": 0.585635359116022,
-      "roc_auc": 0.6024177712322042,
+      "train_rows": 16877,
+      "test_rows": 1523,
+      "best_iteration": 237,
+      "accuracy": 0.5732107682206172,
+      "roc_auc": 0.592311708889249,
       "purged_timestamps": 20,
       "timestamp_boundaries": {
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2024-01-07T21:00:00.000000000",
-        "train_end_after_purge": "2024-01-05T09:00:00.000000000",
-        "test_start": "2024-01-08T00:00:00.000000000",
-        "test_end": "2024-02-07T21:00:00.000000000",
-        "train_unique_timestamps_after_purge": 4592,
-        "test_unique_timestamps": 385
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2024-01-07T12:00:00.000000000",
+        "train_end_after_purge": "2024-01-05T08:00:00.000000000",
+        "test_start": "2024-01-07T13:00:00.000000000",
+        "test_end": "2024-02-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 6134,
+        "test_unique_timestamps": 522
       },
       "train_period": {
-        "start": "2023-01-07 22:00:00",
-        "end": "2024-01-05 09:00:00"
+        "start": "2023-01-07 13:00:00",
+        "end": "2024-01-05 08:00:00"
       },
       "test_period": {
-        "start": "2024-01-08 00:00:00",
-        "end": "2024-02-07 21:00:00"
+        "start": "2024-01-07 13:00:00",
+        "end": "2024-02-07 12:00:00"
       },
       "internal_eval": {
-        "internal_eval_size": 1257,
+        "internal_eval_size": 2531,
+        "eval_rows": 2531,
+        "fit_pos_rate": 0.5075282308657465,
+        "eval_pos_rate": 0.5318056104306598,
         "fallback_used": false,
         "fallback_n_estimators": null
       }
@@ -330,31 +351,34 @@
     {
       "fold": 8,
       "split_mode": "monthly",
-      "train_rows": 9097,
-      "test_rows": 590,
-      "best_iteration": 126,
-      "accuracy": 0.6559322033898305,
-      "roc_auc": 0.5539112739112739,
+      "train_rows": 18379,
+      "test_rows": 1305,
+      "best_iteration": 342,
+      "accuracy": 0.5992337164750958,
+      "roc_auc": 0.5542170778121127,
       "purged_timestamps": 20,
       "timestamp_boundaries": {
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2024-02-07T21:00:00.000000000",
-        "train_end_after_purge": "2024-02-07T01:00:00.000000000",
-        "test_start": "2024-02-07T22:00:00.000000000",
-        "test_end": "2024-03-07T21:00:00.000000000",
-        "train_unique_timestamps_after_purge": 4977,
-        "test_unique_timestamps": 387
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2024-02-07T12:00:00.000000000",
+        "train_end_after_purge": "2024-02-06T16:00:00.000000000",
+        "test_start": "2024-02-07T13:00:00.000000000",
+        "test_end": "2024-03-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 6656,
+        "test_unique_timestamps": 523
       },
       "train_period": {
-        "start": "2023-01-07 22:00:00",
-        "end": "2024-02-07 01:00:00"
+        "start": "2023-01-07 13:00:00",
+        "end": "2024-02-06 16:00:00"
       },
       "test_period": {
-        "start": "2024-02-07 22:00:00",
-        "end": "2024-03-07 21:00:00"
+        "start": "2024-02-07 13:00:00",
+        "end": "2024-03-07 12:00:00"
       },
       "internal_eval": {
-        "internal_eval_size": 1819,
+        "internal_eval_size": 3675,
+        "eval_rows": 3675,
+        "fit_pos_rate": 0.5054406964091404,
+        "eval_pos_rate": 0.4726530612244898,
         "fallback_used": false,
         "fallback_n_estimators": null
       }
@@ -362,31 +386,34 @@
     {
       "fold": 9,
       "split_mode": "monthly",
-      "train_rows": 9713,
-      "test_rows": 711,
-      "best_iteration": 354,
-      "accuracy": 0.5386779184247539,
-      "roc_auc": 0.5377030068492041,
+      "train_rows": 19711,
+      "test_rows": 1401,
+      "best_iteration": 343,
+      "accuracy": 0.5403283369022127,
+      "roc_auc": 0.5123633611280705,
       "purged_timestamps": 20,
       "timestamp_boundaries": {
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2024-03-07T21:00:00.000000000",
-        "train_end_after_purge": "2024-03-05T17:00:00.000000000",
-        "test_start": "2024-03-07T22:00:00.000000000",
-        "test_end": "2024-04-07T21:00:00.000000000",
-        "train_unique_timestamps_after_purge": 5364,
-        "test_unique_timestamps": 373
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2024-03-07T12:00:00.000000000",
+        "train_end_after_purge": "2024-03-05T14:00:00.000000000",
+        "test_start": "2024-03-07T13:00:00.000000000",
+        "test_end": "2024-04-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 7179,
+        "test_unique_timestamps": 471
       },
       "train_period": {
-        "start": "2023-01-07 22:00:00",
-        "end": "2024-03-05 17:00:00"
+        "start": "2023-01-07 13:00:00",
+        "end": "2024-03-05 14:00:00"
       },
       "test_period": {
-        "start": "2024-03-07 22:00:00",
-        "end": "2024-04-07 21:00:00"
+        "start": "2024-03-07 13:00:00",
+        "end": "2024-04-07 12:00:00"
       },
       "internal_eval": {
-        "internal_eval_size": 1456,
+        "internal_eval_size": 2956,
+        "eval_rows": 2956,
+        "fit_pos_rate": 0.5147717099373321,
+        "eval_pos_rate": 0.5145466847090663,
         "fallback_used": false,
         "fallback_n_estimators": null
       }
@@ -394,31 +421,34 @@
     {
       "fold": 10,
       "split_mode": "monthly",
-      "train_rows": 10410,
-      "test_rows": 689,
-      "best_iteration": 751,
-      "accuracy": 0.5471698113207547,
-      "roc_auc": 0.5890022345283202,
+      "train_rows": 21099,
+      "test_rows": 1381,
+      "best_iteration": 582,
+      "accuracy": 0.5496017378711079,
+      "roc_auc": 0.5729383188920288,
       "purged_timestamps": 20,
       "timestamp_boundaries": {
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2024-04-07T21:00:00.000000000",
-        "train_end_after_purge": "2024-04-06T12:00:00.000000000",
-        "test_start": "2024-04-07T22:00:00.000000000",
-        "test_end": "2024-05-07T16:00:00.000000000",
-        "train_unique_timestamps_after_purge": 5737,
-        "test_unique_timestamps": 342
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2024-04-07T12:00:00.000000000",
+        "train_end_after_purge": "2024-04-05T17:00:00.000000000",
+        "test_start": "2024-04-07T13:00:00.000000000",
+        "test_end": "2024-05-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 7650,
+        "test_unique_timestamps": 420
       },
       "train_period": {
-        "start": "2023-01-07 22:00:00",
-        "end": "2024-04-06 12:00:00"
+        "start": "2023-01-07 13:00:00",
+        "end": "2024-04-05 17:00:00"
       },
       "test_period": {
-        "start": "2024-04-07 22:00:00",
-        "end": "2024-05-07 16:00:00"
+        "start": "2024-04-07 13:00:00",
+        "end": "2024-05-07 12:00:00"
       },
       "internal_eval": {
-        "internal_eval_size": 1561,
+        "internal_eval_size": 3164,
+        "eval_rows": 3164,
+        "fit_pos_rate": 0.5001951491497073,
+        "eval_pos_rate": 0.5458280657395702,
         "fallback_used": false,
         "fallback_n_estimators": null
       }
@@ -426,31 +456,34 @@
     {
       "fold": 11,
       "split_mode": "monthly",
-      "train_rows": 11097,
-      "test_rows": 634,
-      "best_iteration": 496,
-      "accuracy": 0.4022082018927445,
-      "roc_auc": 0.40604221741568536,
+      "train_rows": 22472,
+      "test_rows": 1326,
+      "best_iteration": 261,
+      "accuracy": 0.4962292609351433,
+      "roc_auc": 0.5473966323325298,
       "purged_timestamps": 20,
       "timestamp_boundaries": {
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2024-05-07T16:00:00.000000000",
-        "train_end_after_purge": "2024-05-05T13:00:00.000000000",
-        "test_start": "2024-05-08T03:00:00.000000000",
-        "test_end": "2024-06-07T17:00:00.000000000",
-        "train_unique_timestamps_after_purge": 6079,
-        "test_unique_timestamps": 376
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2024-05-07T12:00:00.000000000",
+        "train_end_after_purge": "2024-05-05T20:00:00.000000000",
+        "test_start": "2024-05-07T13:00:00.000000000",
+        "test_end": "2024-06-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 8070,
+        "test_unique_timestamps": 475
       },
       "train_period": {
-        "start": "2023-01-07 22:00:00",
-        "end": "2024-05-05 13:00:00"
+        "start": "2023-01-07 13:00:00",
+        "end": "2024-05-05 20:00:00"
       },
       "test_period": {
-        "start": "2024-05-08 03:00:00",
-        "end": "2024-06-07 17:00:00"
+        "start": "2024-05-07 13:00:00",
+        "end": "2024-06-07 12:00:00"
       },
       "internal_eval": {
-        "internal_eval_size": 2219,
+        "internal_eval_size": 3370,
+        "eval_rows": 3370,
+        "fit_pos_rate": 0.508794890587373,
+        "eval_pos_rate": 0.43293768545994066,
         "fallback_used": false,
         "fallback_n_estimators": null
       }
@@ -458,63 +491,69 @@
     {
       "fold": 12,
       "split_mode": "monthly",
-      "train_rows": 11732,
-      "test_rows": 816,
-      "best_iteration": 150,
-      "accuracy": 0.6176470588235294,
-      "roc_auc": 0.5798033205793004,
+      "train_rows": 23797,
+      "test_rows": 1591,
+      "best_iteration": 254,
+      "accuracy": 0.5003142677561282,
+      "roc_auc": 0.3856050999136526,
       "purged_timestamps": 20,
       "timestamp_boundaries": {
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2024-06-07T17:00:00.000000000",
-        "train_end_after_purge": "2024-06-06T18:00:00.000000000",
-        "test_start": "2024-06-08T22:00:00.000000000",
-        "test_end": "2024-07-07T21:00:00.000000000",
-        "train_unique_timestamps_after_purge": 6455,
-        "test_unique_timestamps": 379
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2024-06-07T12:00:00.000000000",
+        "train_end_after_purge": "2024-06-06T16:00:00.000000000",
+        "test_start": "2024-06-07T13:00:00.000000000",
+        "test_end": "2024-07-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 8545,
+        "test_unique_timestamps": 463
       },
       "train_period": {
-        "start": "2023-01-07 22:00:00",
-        "end": "2024-06-06 18:00:00"
+        "start": "2023-01-07 13:00:00",
+        "end": "2024-06-06 16:00:00"
       },
       "test_period": {
-        "start": "2024-06-08 22:00:00",
-        "end": "2024-07-07 21:00:00"
+        "start": "2024-06-07 13:00:00",
+        "end": "2024-07-07 12:00:00"
       },
       "internal_eval": {
-        "internal_eval_size": 2346,
-        "fallback_used": true,
-        "fallback_n_estimators": 150
+        "internal_eval_size": 4759,
+        "eval_rows": 4759,
+        "fit_pos_rate": 0.5096123542388906,
+        "eval_pos_rate": 0.44841353225467534,
+        "fallback_used": false,
+        "fallback_n_estimators": null
       }
     },
     {
       "fold": 13,
       "split_mode": "monthly",
-      "train_rows": 12531,
-      "test_rows": 706,
-      "best_iteration": 317,
-      "accuracy": 0.48583569405099153,
-      "roc_auc": 0.5111397191937885,
+      "train_rows": 25357,
+      "test_rows": 1492,
+      "best_iteration": 189,
+      "accuracy": 0.5985254691689008,
+      "roc_auc": 0.6438970838246678,
       "purged_timestamps": 20,
       "timestamp_boundaries": {
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2024-07-07T21:00:00.000000000",
-        "train_end_after_purge": "2024-07-07T01:00:00.000000000",
-        "test_start": "2024-07-07T22:00:00.000000000",
-        "test_end": "2024-08-07T21:00:00.000000000",
-        "train_unique_timestamps_after_purge": 6834,
-        "test_unique_timestamps": 352
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2024-07-07T12:00:00.000000000",
+        "train_end_after_purge": "2024-07-06T15:00:00.000000000",
+        "test_start": "2024-07-07T13:00:00.000000000",
+        "test_end": "2024-08-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 9008,
+        "test_unique_timestamps": 513
       },
       "train_period": {
-        "start": "2023-01-07 22:00:00",
-        "end": "2024-07-07 01:00:00"
+        "start": "2023-01-07 13:00:00",
+        "end": "2024-07-06 15:00:00"
       },
       "test_period": {
-        "start": "2024-07-07 22:00:00",
-        "end": "2024-08-07 21:00:00"
+        "start": "2024-07-07 13:00:00",
+        "end": "2024-08-07 12:00:00"
       },
       "internal_eval": {
-        "internal_eval_size": 3759,
+        "internal_eval_size": 7607,
+        "eval_rows": 7607,
+        "fit_pos_rate": 0.4987042253521127,
+        "eval_pos_rate": 0.4622058630209018,
         "fallback_used": false,
         "fallback_n_estimators": null
       }
@@ -522,31 +561,34 @@
     {
       "fold": 14,
       "split_mode": "monthly",
-      "train_rows": 13254,
-      "test_rows": 684,
-      "best_iteration": 175,
-      "accuracy": 0.44005847953216376,
-      "roc_auc": 0.39409554482018255,
+      "train_rows": 26889,
+      "test_rows": 1420,
+      "best_iteration": 210,
+      "accuracy": 0.5992957746478873,
+      "roc_auc": 0.5845639534883721,
       "purged_timestamps": 20,
       "timestamp_boundaries": {
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2024-08-07T21:00:00.000000000",
-        "train_end_after_purge": "2024-08-05T10:00:00.000000000",
-        "test_start": "2024-08-07T22:00:00.000000000",
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2024-08-07T12:00:00.000000000",
+        "train_end_after_purge": "2024-08-05T01:00:00.000000000",
+        "test_start": "2024-08-07T13:00:00.000000000",
         "test_end": "2024-09-06T20:00:00.000000000",
-        "train_unique_timestamps_after_purge": 7186,
-        "test_unique_timestamps": 361
+        "train_unique_timestamps_after_purge": 9521,
+        "test_unique_timestamps": 469
       },
       "train_period": {
-        "start": "2023-01-07 22:00:00",
-        "end": "2024-08-05 10:00:00"
+        "start": "2023-01-07 13:00:00",
+        "end": "2024-08-05 01:00:00"
       },
       "test_period": {
-        "start": "2024-08-07 22:00:00",
+        "start": "2024-08-07 13:00:00",
         "end": "2024-09-06 20:00:00"
       },
       "internal_eval": {
-        "internal_eval_size": 5301,
+        "internal_eval_size": 4033,
+        "eval_rows": 4033,
+        "fit_pos_rate": 0.4948372418620931,
+        "eval_pos_rate": 0.4287131167865113,
         "fallback_used": false,
         "fallback_n_estimators": null
       }
@@ -554,31 +596,34 @@
     {
       "fold": 15,
       "split_mode": "monthly",
-      "train_rows": 13942,
-      "test_rows": 645,
-      "best_iteration": 65,
-      "accuracy": 0.4883720930232558,
-      "roc_auc": 0.5084409136047666,
+      "train_rows": 28297,
+      "test_rows": 1291,
+      "best_iteration": 159,
+      "accuracy": 0.5755228505034856,
+      "roc_auc": 0.5777852116166122,
       "purged_timestamps": 20,
       "timestamp_boundaries": {
-        "train_start": "2023-01-07T22:00:00.000000000",
+        "train_start": "2023-01-07T13:00:00.000000000",
         "train_end_before_purge": "2024-09-06T20:00:00.000000000",
-        "train_end_after_purge": "2024-09-05T13:00:00.000000000",
-        "test_start": "2024-09-07T22:00:00.000000000",
-        "test_end": "2024-10-07T14:00:00.000000000",
-        "train_unique_timestamps_after_purge": 7547,
-        "test_unique_timestamps": 327
+        "train_end_after_purge": "2024-09-05T21:00:00.000000000",
+        "test_start": "2024-09-07T20:00:00.000000000",
+        "test_end": "2024-10-07T08:00:00.000000000",
+        "train_unique_timestamps_after_purge": 9990,
+        "test_unique_timestamps": 498
       },
       "train_period": {
-        "start": "2023-01-07 22:00:00",
-        "end": "2024-09-05 13:00:00"
+        "start": "2023-01-07 13:00:00",
+        "end": "2024-09-05 21:00:00"
       },
       "test_period": {
-        "start": "2024-09-07 22:00:00",
-        "end": "2024-10-07 14:00:00"
+        "start": "2024-09-07 20:00:00",
+        "end": "2024-10-07 08:00:00"
       },
       "internal_eval": {
-        "internal_eval_size": 4879,
+        "internal_eval_size": 9903,
+        "eval_rows": 9903,
+        "fit_pos_rate": 0.4986952267043601,
+        "eval_pos_rate": 0.4481470261536908,
         "fallback_used": false,
         "fallback_n_estimators": null
       }
@@ -586,31 +631,34 @@
     {
       "fold": 16,
       "split_mode": "monthly",
-      "train_rows": 14577,
-      "test_rows": 717,
-      "best_iteration": 45,
-      "accuracy": 0.606694560669456,
-      "roc_auc": 0.620763187429854,
+      "train_rows": 29589,
+      "test_rows": 1435,
+      "best_iteration": 329,
+      "accuracy": 0.597212543554007,
+      "roc_auc": 0.5964885763380641,
       "purged_timestamps": 20,
       "timestamp_boundaries": {
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2024-10-07T14:00:00.000000000",
-        "train_end_after_purge": "2024-10-06T07:00:00.000000000",
-        "test_start": "2024-10-09T00:00:00.000000000",
-        "test_end": "2024-11-07T14:00:00.000000000",
-        "train_unique_timestamps_after_purge": 7874,
-        "test_unique_timestamps": 409
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2024-10-07T08:00:00.000000000",
+        "train_end_after_purge": "2024-10-06T09:00:00.000000000",
+        "test_start": "2024-10-07T14:00:00.000000000",
+        "test_end": "2024-11-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 10488,
+        "test_unique_timestamps": 531
       },
       "train_period": {
-        "start": "2023-01-07 22:00:00",
-        "end": "2024-10-06 07:00:00"
+        "start": "2023-01-07 13:00:00",
+        "end": "2024-10-06 09:00:00"
       },
       "test_period": {
-        "start": "2024-10-09 00:00:00",
-        "end": "2024-11-07 14:00:00"
+        "start": "2024-10-07 14:00:00",
+        "end": "2024-11-07 12:00:00"
       },
       "internal_eval": {
-        "internal_eval_size": 5830,
+        "internal_eval_size": 4438,
+        "eval_rows": 4438,
+        "fit_pos_rate": 0.4911534332630909,
+        "eval_pos_rate": 0.44186570527264535,
         "fallback_used": false,
         "fallback_n_estimators": null
       }
@@ -618,31 +666,34 @@
     {
       "fold": 17,
       "split_mode": "monthly",
-      "train_rows": 15318,
-      "test_rows": 569,
-      "best_iteration": 165,
-      "accuracy": 0.5852372583479789,
-      "roc_auc": 0.6336906995443581,
+      "train_rows": 31055,
+      "test_rows": 1313,
+      "best_iteration": 340,
+      "accuracy": 0.667936024371668,
+      "roc_auc": 0.6553881751497641,
       "purged_timestamps": 20,
       "timestamp_boundaries": {
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2024-11-07T14:00:00.000000000",
-        "train_end_after_purge": "2024-11-06T14:00:00.000000000",
-        "test_start": "2024-11-08T10:00:00.000000000",
-        "test_end": "2024-12-07T21:00:00.000000000",
-        "train_unique_timestamps_after_purge": 8283,
-        "test_unique_timestamps": 378
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2024-11-07T12:00:00.000000000",
+        "train_end_after_purge": "2024-11-06T16:00:00.000000000",
+        "test_start": "2024-11-07T13:00:00.000000000",
+        "test_end": "2024-12-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 11019,
+        "test_unique_timestamps": 571
       },
       "train_period": {
-        "start": "2023-01-07 22:00:00",
-        "end": "2024-11-06 14:00:00"
+        "start": "2023-01-07 13:00:00",
+        "end": "2024-11-06 16:00:00"
       },
       "test_period": {
-        "start": "2024-11-08 10:00:00",
-        "end": "2024-12-07 21:00:00"
+        "start": "2024-11-07 13:00:00",
+        "end": "2024-12-07 12:00:00"
       },
       "internal_eval": {
-        "internal_eval_size": 2297,
+        "internal_eval_size": 4658,
+        "eval_rows": 4658,
+        "fit_pos_rate": 0.4930484524756601,
+        "eval_pos_rate": 0.46028338342636327,
         "fallback_used": false,
         "fallback_n_estimators": null
       }
@@ -650,31 +701,34 @@
     {
       "fold": 18,
       "split_mode": "monthly",
-      "train_rows": 15884,
-      "test_rows": 730,
-      "best_iteration": 216,
-      "accuracy": 0.6273972602739726,
-      "roc_auc": 0.6103374311691638,
+      "train_rows": 32378,
+      "test_rows": 1309,
+      "best_iteration": 440,
+      "accuracy": 0.6386554621848739,
+      "roc_auc": 0.5950423831316617,
       "purged_timestamps": 20,
       "timestamp_boundaries": {
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2024-12-07T21:00:00.000000000",
-        "train_end_after_purge": "2024-12-05T17:00:00.000000000",
-        "test_start": "2024-12-08T00:00:00.000000000",
-        "test_end": "2025-01-07T21:00:00.000000000",
-        "train_unique_timestamps_after_purge": 8661,
-        "test_unique_timestamps": 394
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2024-12-07T12:00:00.000000000",
+        "train_end_after_purge": "2024-12-06T02:00:00.000000000",
+        "test_start": "2024-12-07T13:00:00.000000000",
+        "test_end": "2025-01-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 11590,
+        "test_unique_timestamps": 469
       },
       "train_period": {
-        "start": "2023-01-07 22:00:00",
-        "end": "2024-12-05 17:00:00"
+        "start": "2023-01-07 13:00:00",
+        "end": "2024-12-06 02:00:00"
       },
       "test_period": {
-        "start": "2024-12-08 00:00:00",
-        "end": "2025-01-07 21:00:00"
+        "start": "2024-12-07 13:00:00",
+        "end": "2025-01-07 12:00:00"
       },
       "internal_eval": {
-        "internal_eval_size": 2382,
+        "internal_eval_size": 6475,
+        "eval_rows": 6475,
+        "fit_pos_rate": 0.49191213372968384,
+        "eval_pos_rate": 0.5252509652509653,
         "fallback_used": false,
         "fallback_n_estimators": null
       }
@@ -682,31 +736,34 @@
     {
       "fold": 19,
       "split_mode": "monthly",
-      "train_rows": 16590,
-      "test_rows": 637,
-      "best_iteration": 470,
-      "accuracy": 0.5886970172684458,
-      "roc_auc": 0.5961753522701856,
+      "train_rows": 33627,
+      "test_rows": 1271,
+      "best_iteration": 757,
+      "accuracy": 0.6593233674272226,
+      "roc_auc": 0.6461295785701747,
       "purged_timestamps": 20,
       "timestamp_boundaries": {
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2025-01-07T21:00:00.000000000",
-        "train_end_after_purge": "2025-01-07T01:00:00.000000000",
-        "test_start": "2025-01-07T22:00:00.000000000",
-        "test_end": "2025-02-07T16:00:00.000000000",
-        "train_unique_timestamps_after_purge": 9055,
-        "test_unique_timestamps": 349
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2025-01-07T12:00:00.000000000",
+        "train_end_after_purge": "2025-01-06T16:00:00.000000000",
+        "test_start": "2025-01-07T13:00:00.000000000",
+        "test_end": "2025-02-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 12059,
+        "test_unique_timestamps": 448
       },
       "train_period": {
-        "start": "2023-01-07 22:00:00",
-        "end": "2025-01-07 01:00:00"
+        "start": "2023-01-07 13:00:00",
+        "end": "2025-01-06 16:00:00"
       },
       "test_period": {
-        "start": "2025-01-07 22:00:00",
-        "end": "2025-02-07 16:00:00"
+        "start": "2025-01-07 13:00:00",
+        "end": "2025-02-07 12:00:00"
       },
       "internal_eval": {
-        "internal_eval_size": 2488,
+        "internal_eval_size": 6725,
+        "eval_rows": 6725,
+        "fit_pos_rate": 0.4846851535201844,
+        "eval_pos_rate": 0.5394795539033457,
         "fallback_used": false,
         "fallback_n_estimators": null
       }
@@ -714,31 +771,34 @@
     {
       "fold": 20,
       "split_mode": "monthly",
-      "train_rows": 17248,
-      "test_rows": 561,
-      "best_iteration": 625,
-      "accuracy": 0.6221033868092691,
-      "roc_auc": 0.62003329459434,
+      "train_rows": 34938,
+      "test_rows": 1140,
+      "best_iteration": 799,
+      "accuracy": 0.6035087719298246,
+      "roc_auc": 0.6094882792049068,
       "purged_timestamps": 20,
       "timestamp_boundaries": {
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2025-02-07T16:00:00.000000000",
-        "train_end_after_purge": "2025-02-06T11:00:00.000000000",
-        "test_start": "2025-02-08T12:00:00.000000000",
-        "test_end": "2025-03-06T23:00:00.000000000",
-        "train_unique_timestamps_after_purge": 9404,
-        "test_unique_timestamps": 314
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2025-02-07T12:00:00.000000000",
+        "train_end_after_purge": "2025-02-06T07:00:00.000000000",
+        "test_start": "2025-02-07T13:00:00.000000000",
+        "test_end": "2025-03-07T00:00:00.000000000",
+        "train_unique_timestamps_after_purge": 12507,
+        "test_unique_timestamps": 403
       },
       "train_period": {
-        "start": "2023-01-07 22:00:00",
-        "end": "2025-02-06 11:00:00"
+        "start": "2023-01-07 13:00:00",
+        "end": "2025-02-06 07:00:00"
       },
       "test_period": {
-        "start": "2025-02-08 12:00:00",
-        "end": "2025-03-06 23:00:00"
+        "start": "2025-02-07 13:00:00",
+        "end": "2025-03-07 00:00:00"
       },
       "internal_eval": {
-        "internal_eval_size": 2587,
+        "internal_eval_size": 5240,
+        "eval_rows": 5240,
+        "fit_pos_rate": 0.4840393292477608,
+        "eval_pos_rate": 0.5322519083969466,
         "fallback_used": false,
         "fallback_n_estimators": null
       }
@@ -746,31 +806,34 @@
     {
       "fold": 21,
       "split_mode": "monthly",
-      "train_rows": 17795,
-      "test_rows": 701,
-      "best_iteration": 790,
-      "accuracy": 0.5991440798858774,
-      "roc_auc": 0.6289114443939471,
+      "train_rows": 36054,
+      "test_rows": 1395,
+      "best_iteration": 799,
+      "accuracy": 0.5856630824372759,
+      "roc_auc": 0.5958385244687617,
       "purged_timestamps": 20,
       "timestamp_boundaries": {
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2025-03-06T23:00:00.000000000",
-        "train_end_after_purge": "2025-03-04T15:00:00.000000000",
-        "test_start": "2025-03-08T18:00:00.000000000",
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2025-03-07T00:00:00.000000000",
+        "train_end_after_purge": "2025-03-06T04:00:00.000000000",
+        "test_start": "2025-03-08T17:00:00.000000000",
         "test_end": "2025-04-07T12:00:00.000000000",
-        "train_unique_timestamps_after_purge": 9718,
-        "test_unique_timestamps": 337
+        "train_unique_timestamps_after_purge": 12910,
+        "test_unique_timestamps": 402
       },
       "train_period": {
-        "start": "2023-01-07 22:00:00",
-        "end": "2025-03-04 15:00:00"
+        "start": "2023-01-07 13:00:00",
+        "end": "2025-03-06 04:00:00"
       },
       "test_period": {
-        "start": "2025-03-08 18:00:00",
+        "start": "2025-03-08 17:00:00",
         "end": "2025-04-07 12:00:00"
       },
       "internal_eval": {
-        "internal_eval_size": 2669,
+        "internal_eval_size": 5408,
+        "eval_rows": 5408,
+        "fit_pos_rate": 0.48825295307707367,
+        "eval_pos_rate": 0.48002958579881655,
         "fallback_used": false,
         "fallback_n_estimators": null
       }
@@ -778,31 +841,34 @@
     {
       "fold": 22,
       "split_mode": "monthly",
-      "train_rows": 18489,
-      "test_rows": 607,
-      "best_iteration": 758,
-      "accuracy": 0.6013179571663921,
-      "roc_auc": 0.5547584541062802,
+      "train_rows": 37421,
+      "test_rows": 1087,
+      "best_iteration": 628,
+      "accuracy": 0.5390984360625575,
+      "roc_auc": 0.5482058316003717,
       "purged_timestamps": 20,
       "timestamp_boundaries": {
-        "train_start": "2023-01-07T22:00:00.000000000",
+        "train_start": "2023-01-07T13:00:00.000000000",
         "train_end_before_purge": "2025-04-07T12:00:00.000000000",
         "train_end_after_purge": "2025-04-06T16:00:00.000000000",
         "test_start": "2025-04-08T08:00:00.000000000",
-        "test_end": "2025-05-07T21:00:00.000000000",
-        "train_unique_timestamps_after_purge": 10055,
-        "test_unique_timestamps": 329
+        "test_end": "2025-05-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 13312,
+        "test_unique_timestamps": 387
       },
       "train_period": {
-        "start": "2023-01-07 22:00:00",
+        "start": "2023-01-07 13:00:00",
         "end": "2025-04-06 16:00:00"
       },
       "test_period": {
         "start": "2025-04-08 08:00:00",
-        "end": "2025-05-07 21:00:00"
+        "end": "2025-05-07 12:00:00"
       },
       "internal_eval": {
-        "internal_eval_size": 3697,
+        "internal_eval_size": 7484,
+        "eval_rows": 7484,
+        "fit_pos_rate": 0.4852523632962555,
+        "eval_pos_rate": 0.472340994120791,
         "fallback_used": false,
         "fallback_n_estimators": null
       }
@@ -810,31 +876,34 @@
     {
       "fold": 23,
       "split_mode": "monthly",
-      "train_rows": 19091,
-      "test_rows": 640,
-      "best_iteration": 800,
-      "accuracy": 0.565625,
-      "roc_auc": 0.550218253968254,
+      "train_rows": 38554,
+      "test_rows": 1392,
+      "best_iteration": 642,
+      "accuracy": 0.5524425287356322,
+      "roc_auc": 0.565299795064235,
       "purged_timestamps": 20,
       "timestamp_boundaries": {
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2025-05-07T21:00:00.000000000",
-        "train_end_after_purge": "2025-05-06T10:00:00.000000000",
-        "test_start": "2025-05-07T22:00:00.000000000",
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2025-05-07T12:00:00.000000000",
+        "train_end_after_purge": "2025-05-06T02:00:00.000000000",
+        "test_start": "2025-05-07T13:00:00.000000000",
         "test_end": "2025-06-07T01:00:00.000000000",
-        "train_unique_timestamps_after_purge": 10384,
-        "test_unique_timestamps": 359
+        "train_unique_timestamps_after_purge": 13699,
+        "test_unique_timestamps": 471
       },
       "train_period": {
-        "start": "2023-01-07 22:00:00",
-        "end": "2025-05-06 10:00:00"
+        "start": "2023-01-07 13:00:00",
+        "end": "2025-05-06 02:00:00"
       },
       "test_period": {
-        "start": "2025-05-07 22:00:00",
+        "start": "2025-05-07 13:00:00",
         "end": "2025-06-07 01:00:00"
       },
       "internal_eval": {
-        "internal_eval_size": 2863,
+        "internal_eval_size": 5783,
+        "eval_rows": 5783,
+        "fit_pos_rate": 0.4975740746391627,
+        "eval_pos_rate": 0.421234653294138,
         "fallback_used": false,
         "fallback_n_estimators": null
       }
@@ -842,31 +911,34 @@
     {
       "fold": 24,
       "split_mode": "monthly",
-      "train_rows": 19745,
-      "test_rows": 621,
-      "best_iteration": 783,
-      "accuracy": 0.47020933977455714,
-      "roc_auc": 0.4843825184627294,
+      "train_rows": 39940,
+      "test_rows": 1309,
+      "best_iteration": 646,
+      "accuracy": 0.5133689839572193,
+      "roc_auc": 0.5105949127601429,
       "purged_timestamps": 20,
       "timestamp_boundaries": {
-        "train_start": "2023-01-07T22:00:00.000000000",
+        "train_start": "2023-01-07T13:00:00.000000000",
         "train_end_before_purge": "2025-06-07T01:00:00.000000000",
-        "train_end_after_purge": "2025-06-05T01:00:00.000000000",
-        "test_start": "2025-06-07T22:00:00.000000000",
-        "test_end": "2025-07-07T21:00:00.000000000",
-        "train_unique_timestamps_after_purge": 10743,
-        "test_unique_timestamps": 357
+        "train_end_after_purge": "2025-06-05T07:00:00.000000000",
+        "test_start": "2025-06-07T15:00:00.000000000",
+        "test_end": "2025-07-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 14170,
+        "test_unique_timestamps": 451
       },
       "train_period": {
-        "start": "2023-01-07 22:00:00",
-        "end": "2025-06-05 01:00:00"
+        "start": "2023-01-07 13:00:00",
+        "end": "2025-06-05 07:00:00"
       },
       "test_period": {
-        "start": "2025-06-07 22:00:00",
-        "end": "2025-07-07 21:00:00"
+        "start": "2025-06-07 15:00:00",
+        "end": "2025-07-07 12:00:00"
       },
       "internal_eval": {
-        "internal_eval_size": 2961,
+        "internal_eval_size": 5991,
+        "eval_rows": 5991,
+        "fit_pos_rate": 0.4932104038410557,
+        "eval_pos_rate": 0.4732098147220831,
         "fallback_used": false,
         "fallback_n_estimators": null
       }
@@ -874,31 +946,34 @@
     {
       "fold": 25,
       "split_mode": "monthly",
-      "train_rows": 20364,
-      "test_rows": 748,
-      "best_iteration": 521,
-      "accuracy": 0.6377005347593583,
-      "roc_auc": 0.5926339285714286,
+      "train_rows": 41288,
+      "test_rows": 1511,
+      "best_iteration": 233,
+      "accuracy": 0.6889477167438782,
+      "roc_auc": 0.6918859649122806,
       "purged_timestamps": 20,
       "timestamp_boundaries": {
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2025-07-07T21:00:00.000000000",
-        "train_end_after_purge": "2025-07-05T23:00:00.000000000",
-        "test_start": "2025-07-07T22:00:00.000000000",
-        "test_end": "2025-08-07T18:00:00.000000000",
-        "train_unique_timestamps_after_purge": 11100,
-        "test_unique_timestamps": 429
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2025-07-07T12:00:00.000000000",
+        "train_end_after_purge": "2025-07-06T12:00:00.000000000",
+        "test_start": "2025-07-07T13:00:00.000000000",
+        "test_end": "2025-08-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 14621,
+        "test_unique_timestamps": 514
       },
       "train_period": {
-        "start": "2023-01-07 22:00:00",
-        "end": "2025-07-05 23:00:00"
+        "start": "2023-01-07 13:00:00",
+        "end": "2025-07-06 12:00:00"
       },
       "test_period": {
-        "start": "2025-07-07 22:00:00",
-        "end": "2025-08-07 18:00:00"
+        "start": "2025-07-07 13:00:00",
+        "end": "2025-08-07 12:00:00"
       },
       "internal_eval": {
-        "internal_eval_size": 3054,
+        "internal_eval_size": 6193,
+        "eval_rows": 6193,
+        "fit_pos_rate": 0.4902692691266562,
+        "eval_pos_rate": 0.49023090586145646,
         "fallback_used": false,
         "fallback_n_estimators": null
       }
@@ -906,31 +981,34 @@
     {
       "fold": 26,
       "split_mode": "monthly",
-      "train_rows": 21120,
-      "test_rows": 566,
-      "best_iteration": 268,
-      "accuracy": 0.4204946996466431,
-      "roc_auc": 0.3959582334132693,
+      "train_rows": 42747,
+      "test_rows": 1130,
+      "best_iteration": 233,
+      "accuracy": 0.4194690265486726,
+      "roc_auc": 0.40197728162945556,
       "purged_timestamps": 20,
       "timestamp_boundaries": {
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2025-08-07T18:00:00.000000000",
-        "train_end_after_purge": "2025-08-06T17:00:00.000000000",
-        "test_start": "2025-08-08T00:00:00.000000000",
-        "test_end": "2025-09-07T21:00:00.000000000",
-        "train_unique_timestamps_after_purge": 11529,
-        "test_unique_timestamps": 360
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2025-08-07T12:00:00.000000000",
+        "train_end_after_purge": "2025-08-06T15:00:00.000000000",
+        "test_start": "2025-08-07T13:00:00.000000000",
+        "test_end": "2025-09-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 15135,
+        "test_unique_timestamps": 426
       },
       "train_period": {
-        "start": "2023-01-07 22:00:00",
-        "end": "2025-08-06 17:00:00"
+        "start": "2023-01-07 13:00:00",
+        "end": "2025-08-06 15:00:00"
       },
       "test_period": {
-        "start": "2025-08-08 00:00:00",
-        "end": "2025-09-07 21:00:00"
+        "start": "2025-08-07 13:00:00",
+        "end": "2025-09-07 12:00:00"
       },
       "internal_eval": {
-        "internal_eval_size": 3168,
+        "internal_eval_size": 6412,
+        "eval_rows": 6412,
+        "fit_pos_rate": 0.4840236686390533,
+        "eval_pos_rate": 0.5475670617592014,
         "fallback_used": false,
         "fallback_n_estimators": null
       }
@@ -938,31 +1016,34 @@
     {
       "fold": 27,
       "split_mode": "monthly",
-      "train_rows": 21693,
-      "test_rows": 714,
-      "best_iteration": 153,
-      "accuracy": 0.5896358543417367,
-      "roc_auc": 0.6446966390222612,
+      "train_rows": 43892,
+      "test_rows": 1443,
+      "best_iteration": 250,
+      "accuracy": 0.5918225918225918,
+      "roc_auc": 0.6347183551081602,
       "purged_timestamps": 20,
       "timestamp_boundaries": {
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2025-09-07T21:00:00.000000000",
-        "train_end_after_purge": "2025-09-05T12:00:00.000000000",
-        "test_start": "2025-09-07T22:00:00.000000000",
-        "test_end": "2025-10-07T13:00:00.000000000",
-        "train_unique_timestamps_after_purge": 11889,
-        "test_unique_timestamps": 389
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2025-09-07T12:00:00.000000000",
+        "train_end_after_purge": "2025-09-05T06:00:00.000000000",
+        "test_start": "2025-09-07T13:00:00.000000000",
+        "test_end": "2025-10-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 15561,
+        "test_unique_timestamps": 471
       },
       "train_period": {
-        "start": "2023-01-07 22:00:00",
-        "end": "2025-09-05 12:00:00"
+        "start": "2023-01-07 13:00:00",
+        "end": "2025-09-05 06:00:00"
       },
       "test_period": {
-        "start": "2025-09-07 22:00:00",
-        "end": "2025-10-07 13:00:00"
+        "start": "2025-09-07 13:00:00",
+        "end": "2025-10-07 12:00:00"
       },
       "internal_eval": {
-        "internal_eval_size": 3253,
+        "internal_eval_size": 6583,
+        "eval_rows": 6583,
+        "fit_pos_rate": 0.48411911335066604,
+        "eval_pos_rate": 0.5509646058028255,
         "fallback_used": false,
         "fallback_n_estimators": null
       }
@@ -970,31 +1051,34 @@
     {
       "fold": 28,
       "split_mode": "monthly",
-      "train_rows": 22389,
-      "test_rows": 696,
-      "best_iteration": 287,
-      "accuracy": 0.6192528735632183,
-      "roc_auc": 0.6173261065943993,
+      "train_rows": 45300,
+      "test_rows": 1377,
+      "best_iteration": 253,
+      "accuracy": 0.5584604212055192,
+      "roc_auc": 0.5287145226204675,
       "purged_timestamps": 20,
       "timestamp_boundaries": {
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2025-10-07T13:00:00.000000000",
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2025-10-07T12:00:00.000000000",
         "train_end_after_purge": "2025-10-06T12:00:00.000000000",
-        "test_start": "2025-10-07T23:00:00.000000000",
-        "test_end": "2025-11-07T16:00:00.000000000",
-        "train_unique_timestamps_after_purge": 12278,
-        "test_unique_timestamps": 345
+        "test_start": "2025-10-07T13:00:00.000000000",
+        "test_end": "2025-11-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 16032,
+        "test_unique_timestamps": 429
       },
       "train_period": {
-        "start": "2023-01-07 22:00:00",
+        "start": "2023-01-07 13:00:00",
         "end": "2025-10-06 12:00:00"
       },
       "test_period": {
-        "start": "2025-10-07 23:00:00",
-        "end": "2025-11-07 16:00:00"
+        "start": "2025-10-07 13:00:00",
+        "end": "2025-11-07 12:00:00"
       },
       "internal_eval": {
-        "internal_eval_size": 3358,
+        "internal_eval_size": 6795,
+        "eval_rows": 6795,
+        "fit_pos_rate": 0.48674198156083626,
+        "eval_pos_rate": 0.5611479028697571,
         "fallback_used": false,
         "fallback_n_estimators": null
       }
@@ -1002,31 +1086,34 @@
     {
       "fold": 29,
       "split_mode": "monthly",
-      "train_rows": 23092,
-      "test_rows": 711,
-      "best_iteration": 329,
-      "accuracy": 0.5879043600562588,
-      "roc_auc": 0.5432865048957003,
+      "train_rows": 46735,
+      "test_rows": 1357,
+      "best_iteration": 299,
+      "accuracy": 0.5187914517317612,
+      "roc_auc": 0.4549994566578314,
       "purged_timestamps": 20,
       "timestamp_boundaries": {
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2025-11-07T16:00:00.000000000",
-        "train_end_after_purge": "2025-11-05T23:00:00.000000000",
-        "test_start": "2025-11-08T18:00:00.000000000",
-        "test_end": "2025-12-07T15:00:00.000000000",
-        "train_unique_timestamps_after_purge": 12623,
-        "test_unique_timestamps": 332
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2025-11-07T12:00:00.000000000",
+        "train_end_after_purge": "2025-11-06T06:00:00.000000000",
+        "test_start": "2025-11-07T13:00:00.000000000",
+        "test_end": "2025-12-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 16461,
+        "test_unique_timestamps": 389
       },
       "train_period": {
-        "start": "2023-01-07 22:00:00",
-        "end": "2025-11-05 23:00:00"
+        "start": "2023-01-07 13:00:00",
+        "end": "2025-11-06 06:00:00"
       },
       "test_period": {
-        "start": "2025-11-08 18:00:00",
-        "end": "2025-12-07 15:00:00"
+        "start": "2025-11-07 13:00:00",
+        "end": "2025-12-07 12:00:00"
       },
       "internal_eval": {
-        "internal_eval_size": 3463,
+        "internal_eval_size": 7010,
+        "eval_rows": 7010,
+        "fit_pos_rate": 0.48981749528005036,
+        "eval_pos_rate": 0.5037089871611983,
         "fallback_used": false,
         "fallback_n_estimators": null
       }
@@ -1034,31 +1121,34 @@
     {
       "fold": 30,
       "split_mode": "monthly",
-      "train_rows": 23785,
-      "test_rows": 670,
-      "best_iteration": 299,
-      "accuracy": 0.6029850746268657,
-      "roc_auc": 0.5522415247737383,
+      "train_rows": 48046,
+      "test_rows": 1428,
+      "best_iteration": 187,
+      "accuracy": 0.5511204481792717,
+      "roc_auc": 0.5751233761702043,
       "purged_timestamps": 20,
       "timestamp_boundaries": {
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2025-12-07T15:00:00.000000000",
-        "train_end_after_purge": "2025-12-06T19:00:00.000000000",
-        "test_start": "2025-12-08T20:00:00.000000000",
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2025-12-07T12:00:00.000000000",
+        "train_end_after_purge": "2025-12-05T13:00:00.000000000",
+        "test_start": "2025-12-07T13:00:00.000000000",
         "test_end": "2026-01-06T23:00:00.000000000",
-        "train_unique_timestamps_after_purge": 12955,
-        "test_unique_timestamps": 340
+        "train_unique_timestamps_after_purge": 16850,
+        "test_unique_timestamps": 453
       },
       "train_period": {
-        "start": "2023-01-07 22:00:00",
-        "end": "2025-12-06 19:00:00"
+        "start": "2023-01-07 13:00:00",
+        "end": "2025-12-05 13:00:00"
       },
       "test_period": {
-        "start": "2025-12-08 20:00:00",
+        "start": "2025-12-07 13:00:00",
         "end": "2026-01-06 23:00:00"
       },
       "internal_eval": {
-        "internal_eval_size": 3567,
+        "internal_eval_size": 7206,
+        "eval_rows": 7206,
+        "fit_pos_rate": 0.48736532810969635,
+        "eval_pos_rate": 0.4981959478212601,
         "fallback_used": false,
         "fallback_n_estimators": null
       }
@@ -1066,31 +1156,34 @@
     {
       "fold": 31,
       "split_mode": "monthly",
-      "train_rows": 24483,
-      "test_rows": 727,
-      "best_iteration": 491,
-      "accuracy": 0.6932599724896836,
-      "roc_auc": 0.6690326840541433,
+      "train_rows": 49513,
+      "test_rows": 1364,
+      "best_iteration": 188,
+      "accuracy": 0.7265395894428153,
+      "roc_auc": 0.667371196051236,
       "purged_timestamps": 20,
       "timestamp_boundaries": {
-        "train_start": "2023-01-07T22:00:00.000000000",
+        "train_start": "2023-01-07T13:00:00.000000000",
         "train_end_before_purge": "2026-01-06T23:00:00.000000000",
-        "train_end_after_purge": "2026-01-05T23:00:00.000000000",
-        "test_start": "2026-01-08T00:00:00.000000000",
-        "test_end": "2026-02-07T14:00:00.000000000",
-        "train_unique_timestamps_after_purge": 13295,
-        "test_unique_timestamps": 331
+        "train_end_after_purge": "2026-01-06T01:00:00.000000000",
+        "test_start": "2026-01-07T18:00:00.000000000",
+        "test_end": "2026-02-07T11:00:00.000000000",
+        "train_unique_timestamps_after_purge": 17303,
+        "test_unique_timestamps": 391
       },
       "train_period": {
-        "start": "2023-01-07 22:00:00",
-        "end": "2026-01-05 23:00:00"
+        "start": "2023-01-07 13:00:00",
+        "end": "2026-01-06 01:00:00"
       },
       "test_period": {
-        "start": "2026-01-08 00:00:00",
-        "end": "2026-02-07 14:00:00"
+        "start": "2026-01-07 18:00:00",
+        "end": "2026-02-07 11:00:00"
       },
       "internal_eval": {
-        "internal_eval_size": 3672,
+        "internal_eval_size": 7426,
+        "eval_rows": 7426,
+        "fit_pos_rate": 0.4972794449592511,
+        "eval_pos_rate": 0.45219499057366014,
         "fallback_used": false,
         "fallback_n_estimators": null
       }
@@ -1098,31 +1191,34 @@
     {
       "fold": 32,
       "split_mode": "monthly",
-      "train_rows": 25210,
-      "test_rows": 654,
-      "best_iteration": 491,
-      "accuracy": 0.4434250764525994,
-      "roc_auc": 0.41056235636227195,
+      "train_rows": 50866,
+      "test_rows": 1337,
+      "best_iteration": 330,
+      "accuracy": 0.506357516828721,
+      "roc_auc": 0.45268879411250285,
       "purged_timestamps": 20,
       "timestamp_boundaries": {
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2026-02-07T14:00:00.000000000",
-        "train_end_after_purge": "2026-02-05T17:00:00.000000000",
-        "test_start": "2026-02-08T05:00:00.000000000",
-        "test_end": "2026-03-07T21:00:00.000000000",
-        "train_unique_timestamps_after_purge": 13626,
-        "test_unique_timestamps": 289
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2026-02-07T11:00:00.000000000",
+        "train_end_after_purge": "2026-02-05T19:00:00.000000000",
+        "test_start": "2026-02-07T14:00:00.000000000",
+        "test_end": "2026-03-06T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 17694,
+        "test_unique_timestamps": 373
       },
       "train_period": {
-        "start": "2023-01-07 22:00:00",
-        "end": "2026-02-05 17:00:00"
+        "start": "2023-01-07 13:00:00",
+        "end": "2026-02-05 19:00:00"
       },
       "test_period": {
-        "start": "2026-02-08 05:00:00",
-        "end": "2026-03-07 21:00:00"
+        "start": "2026-02-07 14:00:00",
+        "end": "2026-03-06 12:00:00"
       },
       "internal_eval": {
-        "internal_eval_size": 3781,
+        "internal_eval_size": 7629,
+        "eval_rows": 7629,
+        "fit_pos_rate": 0.49628790156578856,
+        "eval_pos_rate": 0.4211561148250098,
         "fallback_used": false,
         "fallback_n_estimators": null
       }
@@ -1130,31 +1226,104 @@
     {
       "fold": 33,
       "split_mode": "monthly",
-      "train_rows": 25837,
-      "test_rows": 476,
-      "best_iteration": 446,
-      "accuracy": 0.49789915966386555,
-      "roc_auc": 0.45237044230599455,
+      "train_rows": 52193,
+      "test_rows": 1594,
+      "best_iteration": 277,
+      "accuracy": 0.5426599749058971,
+      "roc_auc": 0.5078865199015958,
       "purged_timestamps": 20,
       "timestamp_boundaries": {
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2026-03-07T21:00:00.000000000",
-        "train_end_after_purge": "2026-03-05T22:00:00.000000000",
-        "test_start": "2026-03-07T23:00:00.000000000",
-        "test_end": "2026-03-27T01:00:00.000000000",
-        "train_unique_timestamps_after_purge": 13915,
-        "test_unique_timestamps": 206
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2026-03-06T12:00:00.000000000",
+        "train_end_after_purge": "2026-03-04T20:00:00.000000000",
+        "test_start": "2026-03-07T14:00:00.000000000",
+        "test_end": "2026-04-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 18067,
+        "test_unique_timestamps": 460
       },
       "train_period": {
-        "start": "2023-01-07 22:00:00",
-        "end": "2026-03-05 22:00:00"
+        "start": "2023-01-07 13:00:00",
+        "end": "2026-03-04 20:00:00"
       },
       "test_period": {
-        "start": "2026-03-07 23:00:00",
-        "end": "2026-03-27 01:00:00"
+        "start": "2026-03-07 14:00:00",
+        "end": "2026-04-07 12:00:00"
       },
       "internal_eval": {
-        "internal_eval_size": 3875,
+        "internal_eval_size": 7828,
+        "eval_rows": 7828,
+        "fit_pos_rate": 0.49773470077764004,
+        "eval_pos_rate": 0.4257792539601431,
+        "fallback_used": false,
+        "fallback_n_estimators": null
+      }
+    },
+    {
+      "fold": 34,
+      "split_mode": "monthly",
+      "train_rows": 53791,
+      "test_rows": 1190,
+      "best_iteration": 165,
+      "accuracy": 0.48823529411764705,
+      "roc_auc": 0.36152503745258663,
+      "purged_timestamps": 20,
+      "timestamp_boundaries": {
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2026-04-07T12:00:00.000000000",
+        "train_end_after_purge": "2026-04-06T12:00:00.000000000",
+        "test_start": "2026-04-07T13:00:00.000000000",
+        "test_end": "2026-05-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 18527,
+        "test_unique_timestamps": 396
+      },
+      "train_period": {
+        "start": "2023-01-07 13:00:00",
+        "end": "2026-04-06 12:00:00"
+      },
+      "test_period": {
+        "start": "2026-04-07 13:00:00",
+        "end": "2026-05-07 12:00:00"
+      },
+      "internal_eval": {
+        "internal_eval_size": 8068,
+        "eval_rows": 8068,
+        "fit_pos_rate": 0.49543993176300766,
+        "eval_pos_rate": 0.433068914229053,
+        "fallback_used": false,
+        "fallback_n_estimators": null
+      }
+    },
+    {
+      "fold": 35,
+      "split_mode": "monthly",
+      "train_rows": 54990,
+      "test_rows": 24,
+      "best_iteration": 145,
+      "accuracy": 0.3333333333333333,
+      "roc_auc": 1.0,
+      "purged_timestamps": 20,
+      "timestamp_boundaries": {
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2026-05-07T12:00:00.000000000",
+        "train_end_after_purge": "2026-05-06T05:00:00.000000000",
+        "test_start": "2026-05-07T13:00:00.000000000",
+        "test_end": "2026-05-08T04:00:00.000000000",
+        "train_unique_timestamps_after_purge": 18923,
+        "test_unique_timestamps": 9
+      },
+      "train_period": {
+        "start": "2023-01-07 13:00:00",
+        "end": "2026-05-06 05:00:00"
+      },
+      "test_period": {
+        "start": "2026-05-07 13:00:00",
+        "end": "2026-05-08 04:00:00"
+      },
+      "internal_eval": {
+        "internal_eval_size": 8248,
+        "eval_rows": 8248,
+        "fit_pos_rate": 0.4918274784989945,
+        "eval_pos_rate": 0.49672647914645973,
         "fallback_used": false,
         "fallback_n_estimators": null
       }
@@ -1162,11 +1331,11 @@
   ],
   "confidence_threshold": 0.55,
   "fold_stability": {
-    "accuracy_std": 0.07601235392306785
+    "accuracy_std": 0.07177929927185087
   },
-  "median_best_iteration": 287,
-  "total_rows": 26368,
-  "feature_count": 21,
+  "median_best_iteration": 254,
+  "total_rows": 55068,
+  "feature_count": 20,
   "n_splits": 5,
   "purge_gap": 20,
   "split_mode": "monthly",
@@ -1174,406 +1343,430 @@
   "monthly_test_months": 1,
   "monthly_window_mode": "expanding",
   "dataset_diagnostics": {
-    "all_timestamps_count": 28190,
+    "all_timestamps_count": 29201,
     "first_all_timestamp": "2023-01-07T12:00:00.000000000",
-    "last_all_timestamp": "2026-03-27T01:00:00.000000000",
-    "directional_rows_after_filter": 26368,
+    "last_all_timestamp": "2026-05-08T04:00:00.000000000",
+    "directional_rows_after_filter": 55068,
     "fold_boundary_timestamps": [
       {
         "fold": 1,
-        "train_rows": 4292,
-        "test_rows": 629,
-        "train_start": "2023-01-07T22:00:00.000000000",
+        "train_rows": 8590,
+        "test_rows": 1378,
+        "train_start": "2023-01-07T13:00:00.000000000",
         "train_end_before_purge": "2023-07-07T08:00:00.000000000",
         "train_end_after_purge": "2023-07-05T22:00:00.000000000",
-        "test_start": "2023-07-08T00:00:00.000000000",
-        "test_end": "2023-08-07T21:00:00.000000000",
-        "train_unique_timestamps_after_purge": 2243,
-        "test_unique_timestamps": 336
+        "test_start": "2023-07-07T23:00:00.000000000",
+        "test_end": "2023-08-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 3006,
+        "test_unique_timestamps": 527
       },
       {
         "fold": 2,
-        "train_rows": 4921,
-        "test_rows": 644,
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2023-08-07T21:00:00.000000000",
-        "train_end_after_purge": "2023-08-06T20:00:00.000000000",
-        "test_start": "2023-08-07T22:00:00.000000000",
-        "test_end": "2023-09-07T21:00:00.000000000",
-        "train_unique_timestamps_after_purge": 2579,
-        "test_unique_timestamps": 371
+        "train_rows": 9954,
+        "test_rows": 1332,
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2023-08-07T12:00:00.000000000",
+        "train_end_after_purge": "2023-08-06T15:00:00.000000000",
+        "test_start": "2023-08-07T13:00:00.000000000",
+        "test_end": "2023-09-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 3533,
+        "test_unique_timestamps": 498
       },
       {
         "fold": 3,
-        "train_rows": 5565,
-        "test_rows": 630,
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2023-09-07T21:00:00.000000000",
-        "train_end_after_purge": "2023-09-07T01:00:00.000000000",
-        "test_start": "2023-09-07T22:00:00.000000000",
-        "test_end": "2023-10-07T14:00:00.000000000",
-        "train_unique_timestamps_after_purge": 2950,
-        "test_unique_timestamps": 350
+        "train_rows": 11322,
+        "test_rows": 1221,
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2023-09-07T12:00:00.000000000",
+        "train_end_after_purge": "2023-09-06T06:00:00.000000000",
+        "test_start": "2023-09-07T13:00:00.000000000",
+        "test_end": "2023-10-07T01:00:00.000000000",
+        "train_unique_timestamps_after_purge": 4031,
+        "test_unique_timestamps": 447
       },
       {
         "fold": 4,
-        "train_rows": 6199,
-        "test_rows": 699,
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2023-10-07T14:00:00.000000000",
-        "train_end_after_purge": "2023-10-05T01:00:00.000000000",
-        "test_start": "2023-10-08T13:00:00.000000000",
-        "test_end": "2023-11-07T17:00:00.000000000",
-        "train_unique_timestamps_after_purge": 3300,
-        "test_unique_timestamps": 397
+        "train_rows": 12549,
+        "test_rows": 1439,
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2023-10-07T01:00:00.000000000",
+        "train_end_after_purge": "2023-10-05T08:00:00.000000000",
+        "test_start": "2023-10-07T14:00:00.000000000",
+        "test_end": "2023-11-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 4478,
+        "test_unique_timestamps": 552
       },
       {
         "fold": 5,
-        "train_rows": 6899,
-        "test_rows": 796,
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2023-11-07T17:00:00.000000000",
-        "train_end_after_purge": "2023-11-05T07:00:00.000000000",
-        "test_start": "2023-11-08T06:00:00.000000000",
-        "test_end": "2023-12-07T20:00:00.000000000",
-        "train_unique_timestamps_after_purge": 3697,
-        "test_unique_timestamps": 461
+        "train_rows": 13976,
+        "test_rows": 1444,
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2023-11-07T12:00:00.000000000",
+        "train_end_after_purge": "2023-11-06T16:00:00.000000000",
+        "test_start": "2023-11-07T13:00:00.000000000",
+        "test_end": "2023-12-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 5030,
+        "test_unique_timestamps": 540
       },
       {
         "fold": 6,
-        "train_rows": 7692,
-        "test_rows": 700,
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2023-12-07T20:00:00.000000000",
-        "train_end_after_purge": "2023-12-07T00:00:00.000000000",
-        "test_start": "2023-12-07T22:00:00.000000000",
-        "test_end": "2024-01-07T21:00:00.000000000",
-        "train_unique_timestamps_after_purge": 4158,
-        "test_unique_timestamps": 434
+        "train_rows": 15424,
+        "test_rows": 1474,
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2023-12-07T12:00:00.000000000",
+        "train_end_after_purge": "2023-12-06T15:00:00.000000000",
+        "test_start": "2023-12-07T13:00:00.000000000",
+        "test_end": "2024-01-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 5570,
+        "test_unique_timestamps": 564
       },
       {
         "fold": 7,
-        "train_rows": 8386,
-        "test_rows": 724,
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2024-01-07T21:00:00.000000000",
-        "train_end_after_purge": "2024-01-05T09:00:00.000000000",
-        "test_start": "2024-01-08T00:00:00.000000000",
-        "test_end": "2024-02-07T21:00:00.000000000",
-        "train_unique_timestamps_after_purge": 4592,
-        "test_unique_timestamps": 385
+        "train_rows": 16877,
+        "test_rows": 1523,
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2024-01-07T12:00:00.000000000",
+        "train_end_after_purge": "2024-01-05T08:00:00.000000000",
+        "test_start": "2024-01-07T13:00:00.000000000",
+        "test_end": "2024-02-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 6134,
+        "test_unique_timestamps": 522
       },
       {
         "fold": 8,
-        "train_rows": 9097,
-        "test_rows": 590,
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2024-02-07T21:00:00.000000000",
-        "train_end_after_purge": "2024-02-07T01:00:00.000000000",
-        "test_start": "2024-02-07T22:00:00.000000000",
-        "test_end": "2024-03-07T21:00:00.000000000",
-        "train_unique_timestamps_after_purge": 4977,
-        "test_unique_timestamps": 387
+        "train_rows": 18379,
+        "test_rows": 1305,
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2024-02-07T12:00:00.000000000",
+        "train_end_after_purge": "2024-02-06T16:00:00.000000000",
+        "test_start": "2024-02-07T13:00:00.000000000",
+        "test_end": "2024-03-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 6656,
+        "test_unique_timestamps": 523
       },
       {
         "fold": 9,
-        "train_rows": 9713,
-        "test_rows": 711,
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2024-03-07T21:00:00.000000000",
-        "train_end_after_purge": "2024-03-05T17:00:00.000000000",
-        "test_start": "2024-03-07T22:00:00.000000000",
-        "test_end": "2024-04-07T21:00:00.000000000",
-        "train_unique_timestamps_after_purge": 5364,
-        "test_unique_timestamps": 373
+        "train_rows": 19711,
+        "test_rows": 1401,
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2024-03-07T12:00:00.000000000",
+        "train_end_after_purge": "2024-03-05T14:00:00.000000000",
+        "test_start": "2024-03-07T13:00:00.000000000",
+        "test_end": "2024-04-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 7179,
+        "test_unique_timestamps": 471
       },
       {
         "fold": 10,
-        "train_rows": 10410,
-        "test_rows": 689,
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2024-04-07T21:00:00.000000000",
-        "train_end_after_purge": "2024-04-06T12:00:00.000000000",
-        "test_start": "2024-04-07T22:00:00.000000000",
-        "test_end": "2024-05-07T16:00:00.000000000",
-        "train_unique_timestamps_after_purge": 5737,
-        "test_unique_timestamps": 342
+        "train_rows": 21099,
+        "test_rows": 1381,
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2024-04-07T12:00:00.000000000",
+        "train_end_after_purge": "2024-04-05T17:00:00.000000000",
+        "test_start": "2024-04-07T13:00:00.000000000",
+        "test_end": "2024-05-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 7650,
+        "test_unique_timestamps": 420
       },
       {
         "fold": 11,
-        "train_rows": 11097,
-        "test_rows": 634,
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2024-05-07T16:00:00.000000000",
-        "train_end_after_purge": "2024-05-05T13:00:00.000000000",
-        "test_start": "2024-05-08T03:00:00.000000000",
-        "test_end": "2024-06-07T17:00:00.000000000",
-        "train_unique_timestamps_after_purge": 6079,
-        "test_unique_timestamps": 376
+        "train_rows": 22472,
+        "test_rows": 1326,
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2024-05-07T12:00:00.000000000",
+        "train_end_after_purge": "2024-05-05T20:00:00.000000000",
+        "test_start": "2024-05-07T13:00:00.000000000",
+        "test_end": "2024-06-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 8070,
+        "test_unique_timestamps": 475
       },
       {
         "fold": 12,
-        "train_rows": 11732,
-        "test_rows": 816,
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2024-06-07T17:00:00.000000000",
-        "train_end_after_purge": "2024-06-06T18:00:00.000000000",
-        "test_start": "2024-06-08T22:00:00.000000000",
-        "test_end": "2024-07-07T21:00:00.000000000",
-        "train_unique_timestamps_after_purge": 6455,
-        "test_unique_timestamps": 379
+        "train_rows": 23797,
+        "test_rows": 1591,
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2024-06-07T12:00:00.000000000",
+        "train_end_after_purge": "2024-06-06T16:00:00.000000000",
+        "test_start": "2024-06-07T13:00:00.000000000",
+        "test_end": "2024-07-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 8545,
+        "test_unique_timestamps": 463
       },
       {
         "fold": 13,
-        "train_rows": 12531,
-        "test_rows": 706,
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2024-07-07T21:00:00.000000000",
-        "train_end_after_purge": "2024-07-07T01:00:00.000000000",
-        "test_start": "2024-07-07T22:00:00.000000000",
-        "test_end": "2024-08-07T21:00:00.000000000",
-        "train_unique_timestamps_after_purge": 6834,
-        "test_unique_timestamps": 352
+        "train_rows": 25357,
+        "test_rows": 1492,
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2024-07-07T12:00:00.000000000",
+        "train_end_after_purge": "2024-07-06T15:00:00.000000000",
+        "test_start": "2024-07-07T13:00:00.000000000",
+        "test_end": "2024-08-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 9008,
+        "test_unique_timestamps": 513
       },
       {
         "fold": 14,
-        "train_rows": 13254,
-        "test_rows": 684,
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2024-08-07T21:00:00.000000000",
-        "train_end_after_purge": "2024-08-05T10:00:00.000000000",
-        "test_start": "2024-08-07T22:00:00.000000000",
+        "train_rows": 26889,
+        "test_rows": 1420,
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2024-08-07T12:00:00.000000000",
+        "train_end_after_purge": "2024-08-05T01:00:00.000000000",
+        "test_start": "2024-08-07T13:00:00.000000000",
         "test_end": "2024-09-06T20:00:00.000000000",
-        "train_unique_timestamps_after_purge": 7186,
-        "test_unique_timestamps": 361
+        "train_unique_timestamps_after_purge": 9521,
+        "test_unique_timestamps": 469
       },
       {
         "fold": 15,
-        "train_rows": 13942,
-        "test_rows": 645,
-        "train_start": "2023-01-07T22:00:00.000000000",
+        "train_rows": 28297,
+        "test_rows": 1291,
+        "train_start": "2023-01-07T13:00:00.000000000",
         "train_end_before_purge": "2024-09-06T20:00:00.000000000",
-        "train_end_after_purge": "2024-09-05T13:00:00.000000000",
-        "test_start": "2024-09-07T22:00:00.000000000",
-        "test_end": "2024-10-07T14:00:00.000000000",
-        "train_unique_timestamps_after_purge": 7547,
-        "test_unique_timestamps": 327
+        "train_end_after_purge": "2024-09-05T21:00:00.000000000",
+        "test_start": "2024-09-07T20:00:00.000000000",
+        "test_end": "2024-10-07T08:00:00.000000000",
+        "train_unique_timestamps_after_purge": 9990,
+        "test_unique_timestamps": 498
       },
       {
         "fold": 16,
-        "train_rows": 14577,
-        "test_rows": 717,
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2024-10-07T14:00:00.000000000",
-        "train_end_after_purge": "2024-10-06T07:00:00.000000000",
-        "test_start": "2024-10-09T00:00:00.000000000",
-        "test_end": "2024-11-07T14:00:00.000000000",
-        "train_unique_timestamps_after_purge": 7874,
-        "test_unique_timestamps": 409
+        "train_rows": 29589,
+        "test_rows": 1435,
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2024-10-07T08:00:00.000000000",
+        "train_end_after_purge": "2024-10-06T09:00:00.000000000",
+        "test_start": "2024-10-07T14:00:00.000000000",
+        "test_end": "2024-11-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 10488,
+        "test_unique_timestamps": 531
       },
       {
         "fold": 17,
-        "train_rows": 15318,
-        "test_rows": 569,
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2024-11-07T14:00:00.000000000",
-        "train_end_after_purge": "2024-11-06T14:00:00.000000000",
-        "test_start": "2024-11-08T10:00:00.000000000",
-        "test_end": "2024-12-07T21:00:00.000000000",
-        "train_unique_timestamps_after_purge": 8283,
-        "test_unique_timestamps": 378
+        "train_rows": 31055,
+        "test_rows": 1313,
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2024-11-07T12:00:00.000000000",
+        "train_end_after_purge": "2024-11-06T16:00:00.000000000",
+        "test_start": "2024-11-07T13:00:00.000000000",
+        "test_end": "2024-12-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 11019,
+        "test_unique_timestamps": 571
       },
       {
         "fold": 18,
-        "train_rows": 15884,
-        "test_rows": 730,
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2024-12-07T21:00:00.000000000",
-        "train_end_after_purge": "2024-12-05T17:00:00.000000000",
-        "test_start": "2024-12-08T00:00:00.000000000",
-        "test_end": "2025-01-07T21:00:00.000000000",
-        "train_unique_timestamps_after_purge": 8661,
-        "test_unique_timestamps": 394
+        "train_rows": 32378,
+        "test_rows": 1309,
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2024-12-07T12:00:00.000000000",
+        "train_end_after_purge": "2024-12-06T02:00:00.000000000",
+        "test_start": "2024-12-07T13:00:00.000000000",
+        "test_end": "2025-01-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 11590,
+        "test_unique_timestamps": 469
       },
       {
         "fold": 19,
-        "train_rows": 16590,
-        "test_rows": 637,
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2025-01-07T21:00:00.000000000",
-        "train_end_after_purge": "2025-01-07T01:00:00.000000000",
-        "test_start": "2025-01-07T22:00:00.000000000",
-        "test_end": "2025-02-07T16:00:00.000000000",
-        "train_unique_timestamps_after_purge": 9055,
-        "test_unique_timestamps": 349
+        "train_rows": 33627,
+        "test_rows": 1271,
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2025-01-07T12:00:00.000000000",
+        "train_end_after_purge": "2025-01-06T16:00:00.000000000",
+        "test_start": "2025-01-07T13:00:00.000000000",
+        "test_end": "2025-02-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 12059,
+        "test_unique_timestamps": 448
       },
       {
         "fold": 20,
-        "train_rows": 17248,
-        "test_rows": 561,
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2025-02-07T16:00:00.000000000",
-        "train_end_after_purge": "2025-02-06T11:00:00.000000000",
-        "test_start": "2025-02-08T12:00:00.000000000",
-        "test_end": "2025-03-06T23:00:00.000000000",
-        "train_unique_timestamps_after_purge": 9404,
-        "test_unique_timestamps": 314
+        "train_rows": 34938,
+        "test_rows": 1140,
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2025-02-07T12:00:00.000000000",
+        "train_end_after_purge": "2025-02-06T07:00:00.000000000",
+        "test_start": "2025-02-07T13:00:00.000000000",
+        "test_end": "2025-03-07T00:00:00.000000000",
+        "train_unique_timestamps_after_purge": 12507,
+        "test_unique_timestamps": 403
       },
       {
         "fold": 21,
-        "train_rows": 17795,
-        "test_rows": 701,
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2025-03-06T23:00:00.000000000",
-        "train_end_after_purge": "2025-03-04T15:00:00.000000000",
-        "test_start": "2025-03-08T18:00:00.000000000",
+        "train_rows": 36054,
+        "test_rows": 1395,
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2025-03-07T00:00:00.000000000",
+        "train_end_after_purge": "2025-03-06T04:00:00.000000000",
+        "test_start": "2025-03-08T17:00:00.000000000",
         "test_end": "2025-04-07T12:00:00.000000000",
-        "train_unique_timestamps_after_purge": 9718,
-        "test_unique_timestamps": 337
+        "train_unique_timestamps_after_purge": 12910,
+        "test_unique_timestamps": 402
       },
       {
         "fold": 22,
-        "train_rows": 18489,
-        "test_rows": 607,
-        "train_start": "2023-01-07T22:00:00.000000000",
+        "train_rows": 37421,
+        "test_rows": 1087,
+        "train_start": "2023-01-07T13:00:00.000000000",
         "train_end_before_purge": "2025-04-07T12:00:00.000000000",
         "train_end_after_purge": "2025-04-06T16:00:00.000000000",
         "test_start": "2025-04-08T08:00:00.000000000",
-        "test_end": "2025-05-07T21:00:00.000000000",
-        "train_unique_timestamps_after_purge": 10055,
-        "test_unique_timestamps": 329
+        "test_end": "2025-05-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 13312,
+        "test_unique_timestamps": 387
       },
       {
         "fold": 23,
-        "train_rows": 19091,
-        "test_rows": 640,
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2025-05-07T21:00:00.000000000",
-        "train_end_after_purge": "2025-05-06T10:00:00.000000000",
-        "test_start": "2025-05-07T22:00:00.000000000",
+        "train_rows": 38554,
+        "test_rows": 1392,
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2025-05-07T12:00:00.000000000",
+        "train_end_after_purge": "2025-05-06T02:00:00.000000000",
+        "test_start": "2025-05-07T13:00:00.000000000",
         "test_end": "2025-06-07T01:00:00.000000000",
-        "train_unique_timestamps_after_purge": 10384,
-        "test_unique_timestamps": 359
+        "train_unique_timestamps_after_purge": 13699,
+        "test_unique_timestamps": 471
       },
       {
         "fold": 24,
-        "train_rows": 19745,
-        "test_rows": 621,
-        "train_start": "2023-01-07T22:00:00.000000000",
+        "train_rows": 39940,
+        "test_rows": 1309,
+        "train_start": "2023-01-07T13:00:00.000000000",
         "train_end_before_purge": "2025-06-07T01:00:00.000000000",
-        "train_end_after_purge": "2025-06-05T01:00:00.000000000",
-        "test_start": "2025-06-07T22:00:00.000000000",
-        "test_end": "2025-07-07T21:00:00.000000000",
-        "train_unique_timestamps_after_purge": 10743,
-        "test_unique_timestamps": 357
+        "train_end_after_purge": "2025-06-05T07:00:00.000000000",
+        "test_start": "2025-06-07T15:00:00.000000000",
+        "test_end": "2025-07-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 14170,
+        "test_unique_timestamps": 451
       },
       {
         "fold": 25,
-        "train_rows": 20364,
-        "test_rows": 748,
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2025-07-07T21:00:00.000000000",
-        "train_end_after_purge": "2025-07-05T23:00:00.000000000",
-        "test_start": "2025-07-07T22:00:00.000000000",
-        "test_end": "2025-08-07T18:00:00.000000000",
-        "train_unique_timestamps_after_purge": 11100,
-        "test_unique_timestamps": 429
+        "train_rows": 41288,
+        "test_rows": 1511,
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2025-07-07T12:00:00.000000000",
+        "train_end_after_purge": "2025-07-06T12:00:00.000000000",
+        "test_start": "2025-07-07T13:00:00.000000000",
+        "test_end": "2025-08-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 14621,
+        "test_unique_timestamps": 514
       },
       {
         "fold": 26,
-        "train_rows": 21120,
-        "test_rows": 566,
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2025-08-07T18:00:00.000000000",
-        "train_end_after_purge": "2025-08-06T17:00:00.000000000",
-        "test_start": "2025-08-08T00:00:00.000000000",
-        "test_end": "2025-09-07T21:00:00.000000000",
-        "train_unique_timestamps_after_purge": 11529,
-        "test_unique_timestamps": 360
+        "train_rows": 42747,
+        "test_rows": 1130,
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2025-08-07T12:00:00.000000000",
+        "train_end_after_purge": "2025-08-06T15:00:00.000000000",
+        "test_start": "2025-08-07T13:00:00.000000000",
+        "test_end": "2025-09-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 15135,
+        "test_unique_timestamps": 426
       },
       {
         "fold": 27,
-        "train_rows": 21693,
-        "test_rows": 714,
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2025-09-07T21:00:00.000000000",
-        "train_end_after_purge": "2025-09-05T12:00:00.000000000",
-        "test_start": "2025-09-07T22:00:00.000000000",
-        "test_end": "2025-10-07T13:00:00.000000000",
-        "train_unique_timestamps_after_purge": 11889,
-        "test_unique_timestamps": 389
+        "train_rows": 43892,
+        "test_rows": 1443,
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2025-09-07T12:00:00.000000000",
+        "train_end_after_purge": "2025-09-05T06:00:00.000000000",
+        "test_start": "2025-09-07T13:00:00.000000000",
+        "test_end": "2025-10-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 15561,
+        "test_unique_timestamps": 471
       },
       {
         "fold": 28,
-        "train_rows": 22389,
-        "test_rows": 696,
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2025-10-07T13:00:00.000000000",
+        "train_rows": 45300,
+        "test_rows": 1377,
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2025-10-07T12:00:00.000000000",
         "train_end_after_purge": "2025-10-06T12:00:00.000000000",
-        "test_start": "2025-10-07T23:00:00.000000000",
-        "test_end": "2025-11-07T16:00:00.000000000",
-        "train_unique_timestamps_after_purge": 12278,
-        "test_unique_timestamps": 345
+        "test_start": "2025-10-07T13:00:00.000000000",
+        "test_end": "2025-11-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 16032,
+        "test_unique_timestamps": 429
       },
       {
         "fold": 29,
-        "train_rows": 23092,
-        "test_rows": 711,
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2025-11-07T16:00:00.000000000",
-        "train_end_after_purge": "2025-11-05T23:00:00.000000000",
-        "test_start": "2025-11-08T18:00:00.000000000",
-        "test_end": "2025-12-07T15:00:00.000000000",
-        "train_unique_timestamps_after_purge": 12623,
-        "test_unique_timestamps": 332
+        "train_rows": 46735,
+        "test_rows": 1357,
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2025-11-07T12:00:00.000000000",
+        "train_end_after_purge": "2025-11-06T06:00:00.000000000",
+        "test_start": "2025-11-07T13:00:00.000000000",
+        "test_end": "2025-12-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 16461,
+        "test_unique_timestamps": 389
       },
       {
         "fold": 30,
-        "train_rows": 23785,
-        "test_rows": 670,
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2025-12-07T15:00:00.000000000",
-        "train_end_after_purge": "2025-12-06T19:00:00.000000000",
-        "test_start": "2025-12-08T20:00:00.000000000",
+        "train_rows": 48046,
+        "test_rows": 1428,
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2025-12-07T12:00:00.000000000",
+        "train_end_after_purge": "2025-12-05T13:00:00.000000000",
+        "test_start": "2025-12-07T13:00:00.000000000",
         "test_end": "2026-01-06T23:00:00.000000000",
-        "train_unique_timestamps_after_purge": 12955,
-        "test_unique_timestamps": 340
+        "train_unique_timestamps_after_purge": 16850,
+        "test_unique_timestamps": 453
       },
       {
         "fold": 31,
-        "train_rows": 24483,
-        "test_rows": 727,
-        "train_start": "2023-01-07T22:00:00.000000000",
+        "train_rows": 49513,
+        "test_rows": 1364,
+        "train_start": "2023-01-07T13:00:00.000000000",
         "train_end_before_purge": "2026-01-06T23:00:00.000000000",
-        "train_end_after_purge": "2026-01-05T23:00:00.000000000",
-        "test_start": "2026-01-08T00:00:00.000000000",
-        "test_end": "2026-02-07T14:00:00.000000000",
-        "train_unique_timestamps_after_purge": 13295,
-        "test_unique_timestamps": 331
+        "train_end_after_purge": "2026-01-06T01:00:00.000000000",
+        "test_start": "2026-01-07T18:00:00.000000000",
+        "test_end": "2026-02-07T11:00:00.000000000",
+        "train_unique_timestamps_after_purge": 17303,
+        "test_unique_timestamps": 391
       },
       {
         "fold": 32,
-        "train_rows": 25210,
-        "test_rows": 654,
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2026-02-07T14:00:00.000000000",
-        "train_end_after_purge": "2026-02-05T17:00:00.000000000",
-        "test_start": "2026-02-08T05:00:00.000000000",
-        "test_end": "2026-03-07T21:00:00.000000000",
-        "train_unique_timestamps_after_purge": 13626,
-        "test_unique_timestamps": 289
+        "train_rows": 50866,
+        "test_rows": 1337,
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2026-02-07T11:00:00.000000000",
+        "train_end_after_purge": "2026-02-05T19:00:00.000000000",
+        "test_start": "2026-02-07T14:00:00.000000000",
+        "test_end": "2026-03-06T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 17694,
+        "test_unique_timestamps": 373
       },
       {
         "fold": 33,
-        "train_rows": 25837,
-        "test_rows": 476,
-        "train_start": "2023-01-07T22:00:00.000000000",
-        "train_end_before_purge": "2026-03-07T21:00:00.000000000",
-        "train_end_after_purge": "2026-03-05T22:00:00.000000000",
-        "test_start": "2026-03-07T23:00:00.000000000",
-        "test_end": "2026-03-27T01:00:00.000000000",
-        "train_unique_timestamps_after_purge": 13915,
-        "test_unique_timestamps": 206
+        "train_rows": 52193,
+        "test_rows": 1594,
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2026-03-06T12:00:00.000000000",
+        "train_end_after_purge": "2026-03-04T20:00:00.000000000",
+        "test_start": "2026-03-07T14:00:00.000000000",
+        "test_end": "2026-04-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 18067,
+        "test_unique_timestamps": 460
+      },
+      {
+        "fold": 34,
+        "train_rows": 53791,
+        "test_rows": 1190,
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2026-04-07T12:00:00.000000000",
+        "train_end_after_purge": "2026-04-06T12:00:00.000000000",
+        "test_start": "2026-04-07T13:00:00.000000000",
+        "test_end": "2026-05-07T12:00:00.000000000",
+        "train_unique_timestamps_after_purge": 18527,
+        "test_unique_timestamps": 396
+      },
+      {
+        "fold": 35,
+        "train_rows": 54990,
+        "test_rows": 24,
+        "train_start": "2023-01-07T13:00:00.000000000",
+        "train_end_before_purge": "2026-05-07T12:00:00.000000000",
+        "train_end_after_purge": "2026-05-06T05:00:00.000000000",
+        "test_start": "2026-05-07T13:00:00.000000000",
+        "test_end": "2026-05-08T04:00:00.000000000",
+        "train_unique_timestamps_after_purge": 18923,
+        "test_unique_timestamps": 9
       }
     ]
   }
