@@ -245,13 +245,31 @@ class SimulatedExchange(Exchange):
         if meta.get("barrier_stop_pct") is None or meta.get("barrier_take_pct") is None:
             return None
 
+        stop_pct = float(meta["barrier_stop_pct"])
+        take_pct = float(meta["barrier_take_pct"])
+        direction = 1.0 if position.side.value == "long" else -1.0
+        stop_price = float(position.entry_price) * (1.0 - direction * stop_pct)
+        take_price = float(position.entry_price) * (1.0 + direction * take_pct)
         exit_price, reason = self._exit_manager.check_causal_exit(
             position=position,
             next_open=float(event.open_price),
             next_high=float(event.high_price),
             next_low=float(event.low_price),
-            stop_pct=float(meta["barrier_stop_pct"]),
-            take_pct=float(meta["barrier_take_pct"]),
+            stop_pct=stop_pct,
+            take_pct=take_pct,
+        )
+        logger.info(
+            "[%s] paper 1m exit check | ts=%s | side=%s | entry=%.8f | open=%.8f | high=%.8f | low=%.8f | stop=%.8f | take=%.8f | result=%s",
+            position.symbol,
+            pd.to_datetime(event.end_ms, unit="ms", utc=True).tz_convert(None),
+            position.side.value.upper(),
+            float(position.entry_price),
+            float(event.open_price),
+            float(event.high_price),
+            float(event.low_price),
+            stop_price,
+            take_price,
+            reason or "NONE",
         )
         if exit_price is None:
             return None
