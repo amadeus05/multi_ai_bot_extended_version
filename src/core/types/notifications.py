@@ -40,6 +40,11 @@ class TradeExitNotification:
     pnl_pct: float
     commission: float
     balance: float
+    entry_ts: pd.Timestamp | None = None
+    balance_before: float | None = None
+    winrate_pct: float | None = None
+    stop_losses_count: int | None = None
+    take_profits_count: int | None = None
 
 
 @dataclass(frozen=True)

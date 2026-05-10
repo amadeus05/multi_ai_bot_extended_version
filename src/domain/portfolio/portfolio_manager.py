@@ -1,9 +1,13 @@
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from core.types.enums import OrderSide, PositionSide
 from core.types.domain_types import Position, Trade
+
+if TYPE_CHECKING:
+    from core.interfaces.exchange import Exchange
 
 
 @dataclass
@@ -124,6 +128,7 @@ class PortfolioManager:
                     "pnl_abs_gross": float(realized_chunk),
                     "pnl_abs": float(realized_chunk - commission_round_trip),
                     "commission": float(commission_round_trip),
+                    "entry_ts": (current.meta or {}).get("entry_ts"),
                     "ts": trade.ts,
                 }
             )

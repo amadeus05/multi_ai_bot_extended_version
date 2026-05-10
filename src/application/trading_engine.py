@@ -181,8 +181,14 @@ class TradingEngine:
             balance=float(portfolio.cash.get("USDT", 0.0)),
         )
 
-    @staticmethod
-    def _trade_exit_notification(res: dict, portfolio: PortfolioManager) -> TradeExitNotification:
+    def _trade_exit_notification(self, res: dict, portfolio: PortfolioManager) -> TradeExitNotification:
+        closed = portfolio.closed_trade_results
+        wins = sum(1 for row in closed if float(row.get("pnl_abs", 0.0)) > 0)
+        tp_count = sum(1 for row in closed if str(row.get("reason", "")).upper() == "TP")
+        sl_count = sum(1 for row in closed if str(row.get("reason", "")).upper() == "SL")
+        total = len(closed)
+        balance = float(portfolio.cash.get("USDT", 0.0))
+        pnl_abs = float(res.get("pnl_abs", 0.0))
         return TradeExitNotification(
             trade_number=int(res.get("trade_number", 0)),
             symbol=str(res.get("symbol", "")),
@@ -192,10 +198,15 @@ class TradingEngine:
             entry_price=float(res.get("entry_price", 0.0)),
             exit_price=float(res.get("exit_price", 0.0)),
             qty=float(res.get("qty", 0.0)),
-            pnl_abs=float(res.get("pnl_abs", 0.0)),
+            pnl_abs=pnl_abs,
             pnl_pct=float(res.get("pnl_pct", 0.0)),
             commission=float(res.get("commission", 0.0)),
-            balance=float(portfolio.cash.get("USDT", 0.0)),
+            balance=balance,
+            entry_ts=res.get("entry_ts"),
+            balance_before=balance - pnl_abs,
+            winrate_pct=(wins / total * 100.0) if total else None,
+            stop_losses_count=sl_count,
+            take_profits_count=tp_count,
         )
 
     async def _commands_for_exit_tick(

@@ -29,6 +29,34 @@ def format_signal_text(notification: SignalNotification) -> str:
 
 
 def format_trade_exit_text(notification: TradeExitNotification) -> str:
+    base_asset = notification.symbol.split("/")[0]
+    balance_before = notification.balance_before
+    balance_delta_pct = (
+        notification.pnl_abs / balance_before
+        if balance_before not in (None, 0)
+        else None
+    )
+    return "\n".join(
+        [
+            f"🏁 #{notification.trade_number} · {notification.symbol} · {notification.side.upper()} → {notification.reason.upper()} ✔️",
+            f"{_fmt_trade_period(notification.entry_ts, notification.ts)}",
+            "-----------------------------",
+            f"📥 Вход    {_fmt_plain_num(notification.entry_price, 2)}",
+            f"📤 Выход   {_fmt_plain_num(notification.exit_price, 2)}",
+            f"📦 Кол-во  {_fmt_num(notification.qty, 6)} {base_asset}",
+            "-----------------------------",
+            f"{_fmt_money(notification.pnl_abs)}  ({_fmt_pct(notification.pnl_pct)})",
+            f"-{_fmt_plain_num(notification.commission, 2)} USDT  комиссия",
+            "-----------------------------",
+            f"💼 {_fmt_plain_num(balance_before, 2)} → {_fmt_balance(notification.balance)}  ({_fmt_pct(balance_delta_pct)})",
+            "-----------------------------",
+            f"📊 Winrate    {_fmt_plain_num(notification.winrate_pct, 0)}%",
+            f"⚖️ SL / TP   🔴 {notification.stop_losses_count or 0}  /  🟢 {notification.take_profits_count or 0}",
+        ]
+    )
+
+
+def _old_format_trade_exit_text(notification: TradeExitNotification) -> str:
     return "\n".join(
         [
             f"[TRADE CLOSED #{notification.trade_number}] {notification.symbol} {notification.side.upper()}",
@@ -88,6 +116,29 @@ def _fmt_ts_short(value: pd.Timestamp) -> str:
     if ts.tzinfo is not None:
         ts = ts.tz_convert("UTC")
     return ts.strftime("%d.%m.%Y · %H:%M")
+
+
+def _fmt_ts_compact(value) -> str:
+    if value is None:
+        return "n/a"
+    ts = pd.Timestamp(value)
+    if pd.isna(ts):
+        return "n/a"
+    if ts.tzinfo is not None:
+        ts = ts.tz_convert("UTC")
+    return ts.strftime("%d.%m.%Y  %H:%M")
+
+
+def _fmt_trade_period(entry_ts, exit_ts) -> str:
+    start = pd.Timestamp(entry_ts) if entry_ts is not None else None
+    end = pd.Timestamp(exit_ts)
+    duration = ""
+    if start is not None and not pd.isna(start) and not pd.isna(end):
+        start_cmp = start.tz_convert(None) if start.tzinfo is not None else start
+        end_cmp = end.tz_convert(None) if end.tzinfo is not None else end
+        minutes = max(0, int((end_cmp - start_cmp).total_seconds() // 60))
+        duration = f"  ({minutes} мин)"
+    return f"{_fmt_ts_compact(entry_ts)} → {_fmt_ts_compact(exit_ts)}{duration}"
 
 
 def _fmt_num(value: float | None, digits: int = 4) -> str:
