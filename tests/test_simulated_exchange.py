@@ -8,6 +8,7 @@ from core.types.domain_types import Order, Position
 from core.types.enums import OrderSide, PositionSide
 from core.types.events import FillEvent, OrderAcceptedEvent, OrderCancelledEvent, OrderRejectedEvent
 from core.types.order_flags import ORDER_META_FILL_PRICE_FINAL
+from domain.execution.execution_service import ExecutionService
 from domain.portfolio.portfolio_manager import PortfolioManager
 from infrastructure.exchanges.simulation.simulated_exchange import SimulatedExchange
 
@@ -130,3 +131,126 @@ def test_one_minute_exit_event_closes_long_position_on_take_profit() -> None:
     assert fill.price == pytest.approx(102.0)
     assert fill.command_reason == "TP"
     assert fill.meta[ORDER_META_FILL_PRICE_FINAL] is True
+
+
+def test_one_minute_exit_events_include_order_lifecycle() -> None:
+    class ExitManager:
+        def check_causal_exit(self, **_kwargs):
+            return 98.0, "SL"
+
+    event = type(
+        "Kline",
+        (),
+        {
+            "open_price": 100.0,
+            "high_price": 101.0,
+            "low_price": 97.0,
+            "end_ms": 1_704_067_200_000,
+        },
+    )()
+    portfolio = PortfolioManager(
+        cash={"USDT": 1000.0},
+        positions=[
+            Position(
+                "BTC/USDT",
+                PositionSide.LONG,
+                amount=1.0,
+                entry_price=100.0,
+                meta={"barrier_stop_pct": 0.01, "barrier_take_pct": 0.02},
+            )
+        ],
+    )
+    exchange = SimulatedExchange(
+        commission=0.0,
+        slippage=0.0,
+        order_id_prefix="sim",
+        execution_price_source=None,
+        portfolio=portfolio,
+        exit_manager=ExitManager(),
+    )
+
+    events = asyncio.run(exchange._exit_events_for_kline(portfolio.positions[0], event))
+
+    assert len(events) == 2
+    assert isinstance(events[0], OrderAcceptedEvent)
+    assert isinstance(events[1], FillEvent)
+    assert events[0].order_id == "sim_1"
+    assert events[1].order_id == "sim_1"
+    assert events[1].command_reason == "SL"
+
+
+def test_one_minute_exit_stream_emits_full_order_lifecycle() -> None:
+    class ExitManager:
+        def check_causal_exit(self, **_kwargs):
+            return 98.0, "SL"
+
+    class FakeExitStream:
+        def __init__(self) -> None:
+            self.topics = set()
+            self.stopped = False
+
+        def start(self) -> None:
+            return None
+
+        def stop(self) -> None:
+            self.stopped = True
+
+        def wait_until_connected(self, timeout: float) -> bool:
+            return True
+
+        def sync_topics(self, topics) -> None:
+            self.topics = set(topics)
+
+        def get_event(self, timeout: float):
+            return type(
+                "Kline",
+                (),
+                {
+                    "symbol": "BTCUSDT",
+                    "open_price": 100.0,
+                    "high_price": 101.0,
+                    "low_price": 97.0,
+                    "end_ms": 1_704_067_200_000,
+                },
+            )()
+
+    async def collect_first_two_events(exchange: SimulatedExchange):
+        stream = exchange.stream_execution_events()
+        first = await anext(stream)
+        second = await anext(stream)
+        await stream.aclose()
+        return first, second
+
+    portfolio = PortfolioManager(
+        cash={"USDT": 1000.0},
+        positions=[
+            Position(
+                "BTC/USDT",
+                PositionSide.LONG,
+                amount=1.0,
+                entry_price=100.0,
+                meta={"barrier_stop_pct": 0.01, "barrier_take_pct": 0.02},
+            )
+        ],
+    )
+    exchange = SimulatedExchange(
+        commission=0.0,
+        slippage=0.0,
+        order_id_prefix="sim",
+        execution_price_source=None,
+        portfolio=portfolio,
+        exit_manager=ExitManager(),
+        execution=ExecutionService(),
+    )
+    fake_stream = FakeExitStream()
+    exchange._exit_stream = fake_stream
+
+    first, second = asyncio.run(collect_first_two_events(exchange))
+
+    assert fake_stream.topics == {"kline.1.BTCUSDT"}
+    assert fake_stream.stopped is True
+    assert isinstance(first, OrderAcceptedEvent)
+    assert isinstance(second, FillEvent)
+    assert first.order_id == "sim_1"
+    assert second.order_id == "sim_1"
+    assert second.command_reason == "SL"

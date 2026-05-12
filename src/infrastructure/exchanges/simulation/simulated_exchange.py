@@ -224,9 +224,9 @@ class SimulatedExchange(Exchange):
                 if position is None:
                     continue
 
-                fill_event = await self._exit_event_for_kline(position, event)
-                if fill_event is not None:
-                    yield fill_event
+                events = await self._exit_events_for_kline(position, event)
+                for item in events:
+                    yield item
         finally:
             stream.stop()
 
@@ -240,10 +240,10 @@ class SimulatedExchange(Exchange):
             return f"{upper[:-4]}/USDT"
         return upper
 
-    async def _exit_event_for_kline(self, position: Position, event) -> TradingEvent | None:
+    async def _exit_events_for_kline(self, position: Position, event) -> list[TradingEvent]:
         meta = position.meta or {}
         if meta.get("barrier_stop_pct") is None or meta.get("barrier_take_pct") is None:
-            return None
+            return []
 
         stop_pct = float(meta["barrier_stop_pct"])
         take_pct = float(meta["barrier_take_pct"])
@@ -272,7 +272,7 @@ class SimulatedExchange(Exchange):
             reason or "NONE",
         )
         if exit_price is None:
-            return None
+            return []
 
         side = OrderSide.SELL if position.side.value == "long" else OrderSide.BUY
         order = Order(
@@ -304,6 +304,13 @@ class SimulatedExchange(Exchange):
                     reason,
                     float(exit_price),
                 )
+                return events
+        return events
+
+    async def _exit_event_for_kline(self, position: Position, event) -> TradingEvent | None:
+        events = await self._exit_events_for_kline(position, event)
+        for item in events:
+            if item.__class__.__name__ == "FillEvent":
                 return item
         return None
 
