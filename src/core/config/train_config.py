@@ -51,7 +51,7 @@ class TrainConfig(BaseConfig):
             model_path=cls.env_str("MODEL_PATH", "models/latest.pkl"),
             timeframe=cls.env_str("TIMEFRAME", "1h"),
             htf_timeframe=cls.env_str("HTF_TIMEFRAME", "4h"),
-            dataset_dir=cls.env_str("DATASET_DIR", "data/raw/labeled/source=bybit"),
+            dataset_dir=cls.env_str("DATASET_DIR", "data/labeled/source=bybit"),
             models_dir=cls.env_str("MODELS_DIR", "models"),
             model_name=cls.env_str("TRAIN_MODEL_NAME", "lightgbm_target"),
             seed=int(cls.env_str("TRAIN_SEED", "42")),

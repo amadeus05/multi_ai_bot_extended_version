@@ -53,7 +53,7 @@ class TradingSettings:
 @dataclass(frozen=True)
 class BacktestSettings:
     trading: TradingSettings
-    dataset_dir: str = "data/raw/labeled/source=bybit"
+    dataset_dir: str = "data/labeled/source=bybit"
     charts_dir: str = "backtest_charts"
     skip_initial_bars: int = 0
     start: str = ""

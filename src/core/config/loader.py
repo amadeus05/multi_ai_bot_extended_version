@@ -138,7 +138,7 @@ def load_trading_settings(
 def load_backtest_settings(overrides: dict[str, Any] | None = None) -> BacktestSettings:
     settings = BacktestSettings(
         trading=load_trading_settings(mode="backtest"),
-        dataset_dir=_env(("BACKTEST_DATASET_DIR", "DATASET_DIR"), "data/raw/labeled/source=bybit"),
+        dataset_dir=_env(("BACKTEST_DATASET_DIR", "DATASET_DIR"), "data/labeled/source=bybit"),
         charts_dir=_env("BACKTEST_CHARTS_DIR", "backtest_charts"),
         skip_initial_bars=int(_env("BACKTEST_SKIP_INITIAL_BARS", "0")),
         start=_env("BACKTEST_START", "").strip(),
