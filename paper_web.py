@@ -135,6 +135,13 @@ async def uptime(request: Request) -> JSONResponse:
     )
 
 
+@app.head("/wakeup")
+async def wakeup(request: Request) -> JSONResponse:
+    paper_trading = _task_status(request.app.state.paper_task)
+    status_code = 200 if paper_trading["running"] else 503
+    return JSONResponse(status_code=status_code, content={})
+
+
 if __name__ == "__main__":
     import uvicorn
 
