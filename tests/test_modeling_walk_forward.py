@@ -4,7 +4,10 @@ import numpy as np
 import pandas as pd
 
 from application.modeling.contracts import FoldData, FoldPrediction, ModelingDataset, WalkForwardRunConfig
+from application.modeling.adapters.factory import create_walk_forward_adapter
+from application.modeling.adapters.lightgbm import LightGbmWalkForwardAdapter
 from application.modeling.walk_forward import WalkForwardRunner
+from core.config.train_config import TrainConfig
 
 
 class RecordingAdapter:
@@ -99,3 +102,9 @@ def test_walk_forward_runner_skips_adapter_rejected_folds() -> None:
 
     assert [details["fold"] for details in result.fold_details] == [2]
     assert result.predictions["fold"].unique().tolist() == [2]
+
+
+def test_create_walk_forward_adapter_returns_registered_lightgbm_adapter() -> None:
+    adapter = create_walk_forward_adapter("lightgbm", train_cfg=TrainConfig.from_env())
+
+    assert isinstance(adapter, LightGbmWalkForwardAdapter)

@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from application.modeling.adapters.lightgbm import LightGbmWalkForwardAdapter
+from application.modeling.adapters.factory import create_walk_forward_adapter
 from application.modeling.contracts import WalkForwardRunConfig
 from application.modeling.walk_forward import WalkForwardRunner
 from core.config.train_config import TrainConfig
@@ -39,7 +39,7 @@ class WalkForwardPipeline:
                 monthly_window_mode=self.train_cfg.monthly_window_mode,
                 purge_gap=self.train_cfg.purge_gap,
             ),
-            adapter=LightGbmWalkForwardAdapter(train_cfg=self.train_cfg),
+            adapter=create_walk_forward_adapter("lightgbm", train_cfg=self.train_cfg),
         )
         result = runner.run(dataset)
         return WalkForwardResult(
