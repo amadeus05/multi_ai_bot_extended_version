@@ -4,13 +4,13 @@ from domain.ml.features import config as cfg
 import numpy as np
 import pandas as pd
 
-from domain.ml.features.contracts.feature_builder_contract import FeatureBuilderContract
+from domain.ml.features.builders.base_feature_builder import FeatureBuilder
 from domain.ml.features.indicators import compute_atr, compute_linear_regression_slope, compute_trend_efficiency, safe_ratio
 from domain.ml.features.models.feature_context import FeatureContext
 from domain.ml.features.models.feature_spec import feature_param, feature_spec
 
 
-class MomentumFeatureBuilder(FeatureBuilderContract):
+class MomentumFeatureBuilder(FeatureBuilder):
     block_name = "momentum"
     FEATURE_SPECS = {
         "return_1h_6": feature_spec(
@@ -97,9 +97,9 @@ class MomentumFeatureBuilder(FeatureBuilderContract):
     }
 
     def build(self, context: FeatureContext, requested_features: set[str]) -> pd.DataFrame:
-        active = self.provides().intersection(requested_features)
+        active = self.active_features(requested_features)
         frame = context.frame
-        output = frame[["timestamp"]].copy()
+        output = self.output_frame(context)
         if not active:
             return output
 

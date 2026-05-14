@@ -17,7 +17,7 @@ from domain.ml.features.builders.premium_feature_builder import PremiumFeatureBu
 from domain.ml.features.builders.regime_feature_builder import RegimeFeatureBuilder
 from domain.ml.features.builders.structure_feature_builder import StructureFeatureBuilder
 from domain.ml.features.builders.time_context_feature_builder import TimeContextFeatureBuilder
-from domain.ml.features.contracts.feature_builder_contract import FeatureBuilderContract
+from domain.ml.features.builders.base_feature_builder import FeatureBuilder
 from domain.ml.features.models.feature_context import FeatureContext
 from domain.ml.features.models.feature_pipeline_result import FeaturePipelineResult
 from domain.ml.features.models.feature_request import ResolvedFeatureRequest, resolve_feature_request
@@ -27,7 +27,7 @@ from domain.ml.features.models.feature_spec import FeatureSpec
 
 class MasterFeatureBuilder:
     def __init__(self) -> None:
-        self.main_builders: list[FeatureBuilderContract] = [
+        self.main_builders: list[FeatureBuilder] = [
             MomentumFeatureBuilder(),
             RegimeFeatureBuilder(),
             StructureFeatureBuilder(),
@@ -36,19 +36,19 @@ class MasterFeatureBuilder:
             PremiumFeatureBuilder(),
             OpenInterestFeatureBuilder(),
         ]
-        self.htf_builders: list[FeatureBuilderContract] = [
+        self.htf_builders: list[FeatureBuilder] = [
             HtfFeatureBuilder(),
         ]
-        self.base_enrichment_builders: list[FeatureBuilderContract] = [
+        self.base_enrichment_builders: list[FeatureBuilder] = [
             BtcRelativeFeatureBuilder(),
             BaseCrossSectionalFeatureBuilder(),
             BaseMarketContextFeatureBuilder(),
         ]
-        self.htf_enrichment_builders: list[FeatureBuilderContract] = [
+        self.htf_enrichment_builders: list[FeatureBuilder] = [
             HtfCrossSectionalFeatureBuilder(),
             HtfMarketContextFeatureBuilder(),
         ]
-        self.post_merge_builders: list[FeatureBuilderContract] = [
+        self.post_merge_builders: list[FeatureBuilder] = [
             InteractionFeatureBuilder(),
         ]
 
@@ -129,7 +129,7 @@ class MasterFeatureBuilder:
             feature_specs.update(builder_specs)
         return feature_specs
 
-    def _all_builders(self) -> list[FeatureBuilderContract]:
+    def _all_builders(self) -> list[FeatureBuilder]:
         return [
             *self.main_builders,
             *self.htf_builders,
@@ -141,7 +141,7 @@ class MasterFeatureBuilder:
     def _build_symbol_map(
         self,
         candle_map: dict[str, pd.DataFrame],
-        builders: list[FeatureBuilderContract],
+        builders: list[FeatureBuilder],
         requested_features: set[str],
     ) -> dict[str, pd.DataFrame]:
         built_map: dict[str, pd.DataFrame] = {}
@@ -167,7 +167,7 @@ class MasterFeatureBuilder:
     def _enrich_symbol_map(
         self,
         target_map: dict[str, pd.DataFrame],
-        builders: list[FeatureBuilderContract],
+        builders: list[FeatureBuilder],
         requested_features: set[str],
         base_feature_map: dict[str, pd.DataFrame],
         htf_feature_map: dict[str, pd.DataFrame],

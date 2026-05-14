@@ -3,22 +3,44 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from domain.ml.features.contracts.feature_builder_contract import FeatureBuilderContract
+from domain.ml.features.builders.base_feature_builder import FeatureBuilder
 from domain.ml.features.models.feature_context import FeatureContext
 from domain.ml.features.models.feature_spec import feature_spec
 
 
-class BtcRelativeFeatureBuilder(FeatureBuilderContract):
+class BtcRelativeFeatureBuilder(FeatureBuilder):
     block_name = "btc_relative"
     FEATURE_SPECS = {
-        "relative_strength_vs_btc_24h": feature_spec("relative_strength_vs_btc_24h", block_name, "return_1h_24 - btc_return_1h_24", description="Asset 24-bar return relative to BTC over the same timestamps.", inputs=("close",), dependencies=("return_1h_24",)),
-        "beta_to_btc_24h": feature_spec("beta_to_btc_24h", block_name, "rolling_cov(log(close / close.shift(1)), log(btc_close / btc_close.shift(1)), 24) / rolling_var(log(btc_close / btc_close.shift(1)), 24)", description="Rolling 24-bar beta of the asset to BTC.", inputs=("close",), dependencies=("return_1h_24",)),
-        "residual_return_24h": feature_spec("residual_return_24h", block_name, "return_1h_24 - beta_to_btc_24h * btc_return_1h_24", description="BTC-neutralized 24-bar return.", inputs=("close",), dependencies=("return_1h_24", "beta_to_btc_24h")),
+        "relative_strength_vs_btc_24h": feature_spec(
+            "relative_strength_vs_btc_24h",
+            block_name,
+            "return_1h_24 - btc_return_1h_24",
+            description="Asset 24-bar return relative to BTC over the same timestamps.",
+            inputs=("close",),
+            dependencies=("return_1h_24",),
+        ),
+        "beta_to_btc_24h": feature_spec(
+            "beta_to_btc_24h",
+            block_name,
+            "rolling_cov(log(close / close.shift(1)), log(btc_close / btc_close.shift(1)), 24) / "
+            "rolling_var(log(btc_close / btc_close.shift(1)), 24)",
+            description="Rolling 24-bar beta of the asset to BTC.",
+            inputs=("close",),
+            dependencies=("return_1h_24",),
+        ),
+        "residual_return_24h": feature_spec(
+            "residual_return_24h",
+            block_name,
+            "return_1h_24 - beta_to_btc_24h * btc_return_1h_24",
+            description="BTC-neutralized 24-bar return.",
+            inputs=("close",),
+            dependencies=("return_1h_24", "beta_to_btc_24h"),
+        ),
     }
 
     def build(self, context: FeatureContext, requested_features: set[str]) -> pd.DataFrame:
-        active = self.provides().intersection(requested_features)
-        output = context.frame[["timestamp"]].copy()
+        active = self.active_features(requested_features)
+        output = self.output_frame(context)
         if not active:
             return output
         if context.base_feature_map is None:

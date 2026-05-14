@@ -1,28 +1,63 @@
 from __future__ import annotations
 
-from domain.ml.features import config as cfg
 import numpy as np
 import pandas as pd
 
-from domain.ml.features.contracts.feature_builder_contract import FeatureBuilderContract
+from domain.ml.features import config as cfg
+from domain.ml.features.builders.base_feature_builder import FeatureBuilder
 from domain.ml.features.models.feature_context import FeatureContext
 from domain.ml.features.models.feature_spec import feature_param, feature_spec
 
 
-class PremiumFeatureBuilder(FeatureBuilderContract):
+class PremiumFeatureBuilder(FeatureBuilder):
     block_name = "premium_index"
     FEATURE_SPECS = {
-        "premium_index_1h": feature_spec("premium_index_1h", block_name, "premium_index_close", description="Raw premium index aligned to the main timeframe.", inputs=("premium_index_close",)),
-        "premium_index_zscore_7d": feature_spec("premium_index_zscore_7d", block_name, "(premium_index_close - rolling_mean(premium_index_close, {PREMIUM_INDEX_ZSCORE_WINDOW_1H})) / rolling_std(premium_index_close, {PREMIUM_INDEX_ZSCORE_WINDOW_1H})", description="Premium index z-score on a rolling 7-day window.", params=(feature_param("PREMIUM_INDEX_ZSCORE_WINDOW_1H", 24 * 7),), inputs=("premium_index_close",)),
-        "premium_index_change_24h": feature_spec("premium_index_change_24h", block_name, "premium_index_close - premium_index_close.shift({PREMIUM_INDEX_CHANGE_LOOKBACK_1H})", description="Premium index change over the configured lookback.", params=(feature_param("PREMIUM_INDEX_CHANGE_LOOKBACK_1H", 24),), inputs=("premium_index_close",)),
-        "crowded_longs_score_1h": feature_spec("crowded_longs_score_1h", block_name, "clip(premium_index_zscore_7d, lower=0) * clip(funding_rate_zscore_7d, lower=0)", description="Joint long crowding score from premium and funding extremes.", inputs=("premium_index_close", "funding_rate"), dependencies=("premium_index_zscore_7d", "funding_rate_zscore_7d")),
-        "crowded_shorts_score_1h": feature_spec("crowded_shorts_score_1h", block_name, "clip(-premium_index_zscore_7d, lower=0) * clip(-funding_rate_zscore_7d, lower=0)", description="Joint short crowding score from premium and funding extremes.", inputs=("premium_index_close", "funding_rate"), dependencies=("premium_index_zscore_7d", "funding_rate_zscore_7d")),
+        "premium_index_1h": feature_spec(
+            "premium_index_1h",
+            block_name,
+            "premium_index_close",
+            description="Raw premium index aligned to the main timeframe.",
+            inputs=("premium_index_close",),
+        ),
+        "premium_index_zscore_7d": feature_spec(
+            "premium_index_zscore_7d",
+            block_name,
+            "(premium_index_close - rolling_mean(premium_index_close, {PREMIUM_INDEX_ZSCORE_WINDOW_1H})) / "
+            "rolling_std(premium_index_close, {PREMIUM_INDEX_ZSCORE_WINDOW_1H})",
+            description="Premium index z-score on a rolling 7-day window.",
+            params=(feature_param("PREMIUM_INDEX_ZSCORE_WINDOW_1H", 24 * 7),),
+            inputs=("premium_index_close",),
+        ),
+        "premium_index_change_24h": feature_spec(
+            "premium_index_change_24h",
+            block_name,
+            "premium_index_close - premium_index_close.shift({PREMIUM_INDEX_CHANGE_LOOKBACK_1H})",
+            description="Premium index change over the configured lookback.",
+            params=(feature_param("PREMIUM_INDEX_CHANGE_LOOKBACK_1H", 24),),
+            inputs=("premium_index_close",),
+        ),
+        "crowded_longs_score_1h": feature_spec(
+            "crowded_longs_score_1h",
+            block_name,
+            "clip(premium_index_zscore_7d, lower=0) * clip(funding_rate_zscore_7d, lower=0)",
+            description="Joint long crowding score from premium and funding extremes.",
+            inputs=("premium_index_close", "funding_rate"),
+            dependencies=("premium_index_zscore_7d", "funding_rate_zscore_7d"),
+        ),
+        "crowded_shorts_score_1h": feature_spec(
+            "crowded_shorts_score_1h",
+            block_name,
+            "clip(-premium_index_zscore_7d, lower=0) * clip(-funding_rate_zscore_7d, lower=0)",
+            description="Joint short crowding score from premium and funding extremes.",
+            inputs=("premium_index_close", "funding_rate"),
+            dependencies=("premium_index_zscore_7d", "funding_rate_zscore_7d"),
+        ),
     }
 
     def build(self, context: FeatureContext, requested_features: set[str]) -> pd.DataFrame:
-        active = self.provides().intersection(requested_features)
+        active = self.active_features(requested_features)
         frame = context.frame
-        output = frame[["timestamp"]].copy()
+        output = self.output_frame(context)
         if not active:
             return output
 

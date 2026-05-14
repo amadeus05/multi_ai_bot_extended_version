@@ -9,9 +9,15 @@ from domain.ml.features.models.feature_context import FeatureContext
 from domain.ml.features.models.feature_spec import FeatureSpec
 
 
-class FeatureBuilderContract(ABC):
+class FeatureBuilder(ABC):
     block_name: str
     FEATURE_SPECS: Mapping[str, FeatureSpec] = {}
+
+    def active_features(self, requested_features: set[str]) -> set[str]:
+        return self.provides().intersection(requested_features)
+
+    def output_frame(self, context: FeatureContext) -> pd.DataFrame:
+        return context.frame[["timestamp"]].copy()
 
     def provides(self) -> set[str]:
         return set(self.feature_specs())

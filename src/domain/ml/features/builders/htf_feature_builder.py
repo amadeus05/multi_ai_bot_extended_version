@@ -4,13 +4,13 @@ from domain.ml.features import config as cfg
 import numpy as np
 import pandas as pd
 
-from domain.ml.features.contracts.feature_builder_contract import FeatureBuilderContract
+from domain.ml.features.builders.base_feature_builder import FeatureBuilder
 from domain.ml.features.indicators import compute_adx, compute_atr, compute_linear_regression_slope, compute_rolling_vwap, safe_ratio
 from domain.ml.features.models.feature_context import FeatureContext
 from domain.ml.features.models.feature_spec import feature_param, feature_spec
 
 
-class HtfFeatureBuilder(FeatureBuilderContract):
+class HtfFeatureBuilder(FeatureBuilder):
     block_name = "htf"
     FEATURE_SPECS = {
         "return_4h_1": feature_spec(
@@ -141,9 +141,9 @@ class HtfFeatureBuilder(FeatureBuilderContract):
     }
 
     def build(self, context: FeatureContext, requested_features: set[str]) -> pd.DataFrame:
-        active = self.provides().intersection(requested_features)
+        active = self.active_features(requested_features)
         frame = context.frame
-        output = frame[["timestamp"]].copy()
+        output = self.output_frame(context)
         if not active:
             return output
 
@@ -164,7 +164,7 @@ class HtfFeatureBuilder(FeatureBuilderContract):
 
         if "realized_vol_4h_returns_20" in active:
             log_return_4h_1 = np.log(close / close.shift(1))
-            # shift(rolling_std(...), 1) здесь; ниже общий shift для HTF не применяется к этой колонке.
+            # This column is already lagged here, so the shared HTF shift below skips it.
             output["realized_vol_4h_returns_20"] = (
                 log_return_4h_1.rolling(realized_vol_window).std().shift(1)
             )

@@ -3,25 +3,61 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from domain.ml.features.contracts.feature_builder_contract import FeatureBuilderContract
+from domain.ml.features.builders.base_feature_builder import FeatureBuilder
 from domain.ml.features.models.feature_context import FeatureContext
 from domain.ml.features.models.feature_spec import feature_spec
 
 
-class HtfMarketContextFeatureBuilder(FeatureBuilderContract):
+class HtfMarketContextFeatureBuilder(FeatureBuilder):
     block_name = "market_context"
     FEATURE_SPECS = {
-        "market_breadth_pos_return_4h_3": feature_spec("market_breadth_pos_return_4h_3", block_name, "mean(1{return_4h_3 > 0} across symbols at timestamp)", description="Share of symbols with positive 3-bar HTF return.", dependencies=("return_4h_3",)),
-        "market_dispersion_return_4h_3": feature_spec("market_dispersion_return_4h_3", block_name, "std(return_4h_3 across symbols at timestamp)", description="Cross-sectional dispersion of 3-bar HTF returns.", dependencies=("return_4h_3",)),
-        "market_breadth_pos_return_4h_14": feature_spec("market_breadth_pos_return_4h_14", block_name, "mean(1{return_4h_14 > 0} across symbols at timestamp)", description="Share of symbols with positive 14-bar HTF return.", dependencies=("return_4h_14",)),
-        "market_mean_return_4h_14": feature_spec("market_mean_return_4h_14", block_name, "mean(return_4h_14 across symbols at timestamp)", description="Cross-sectional mean of 14-bar HTF returns.", dependencies=("return_4h_14",)),
-        "market_avg_ema_slope_4h": feature_spec("market_avg_ema_slope_4h", block_name, "mean(ema_slope_4h across symbols at timestamp)", description="Average HTF EMA slope across the market universe.", dependencies=("ema_slope_4h",)),
-        "market_abs_avg_ema_slope_4h": feature_spec("market_abs_avg_ema_slope_4h", block_name, "mean(abs(ema_slope_4h) across symbols at timestamp)", description="Average absolute HTF EMA slope across the market universe.", dependencies=("ema_slope_4h",)),
+        "market_breadth_pos_return_4h_3": feature_spec(
+            "market_breadth_pos_return_4h_3",
+            block_name,
+            "mean(1{return_4h_3 > 0} across symbols at timestamp)",
+            description="Share of symbols with positive 3-bar HTF return.",
+            dependencies=("return_4h_3",),
+        ),
+        "market_dispersion_return_4h_3": feature_spec(
+            "market_dispersion_return_4h_3",
+            block_name,
+            "std(return_4h_3 across symbols at timestamp)",
+            description="Cross-sectional dispersion of 3-bar HTF returns.",
+            dependencies=("return_4h_3",),
+        ),
+        "market_breadth_pos_return_4h_14": feature_spec(
+            "market_breadth_pos_return_4h_14",
+            block_name,
+            "mean(1{return_4h_14 > 0} across symbols at timestamp)",
+            description="Share of symbols with positive 14-bar HTF return.",
+            dependencies=("return_4h_14",),
+        ),
+        "market_mean_return_4h_14": feature_spec(
+            "market_mean_return_4h_14",
+            block_name,
+            "mean(return_4h_14 across symbols at timestamp)",
+            description="Cross-sectional mean of 14-bar HTF returns.",
+            dependencies=("return_4h_14",),
+        ),
+        "market_avg_ema_slope_4h": feature_spec(
+            "market_avg_ema_slope_4h",
+            block_name,
+            "mean(ema_slope_4h across symbols at timestamp)",
+            description="Average HTF EMA slope across the market universe.",
+            dependencies=("ema_slope_4h",),
+        ),
+        "market_abs_avg_ema_slope_4h": feature_spec(
+            "market_abs_avg_ema_slope_4h",
+            block_name,
+            "mean(abs(ema_slope_4h) across symbols at timestamp)",
+            description="Average absolute HTF EMA slope across the market universe.",
+            dependencies=("ema_slope_4h",),
+        ),
     }
 
     def build(self, context: FeatureContext, requested_features: set[str]) -> pd.DataFrame:
-        active = self.provides().intersection(requested_features)
-        output = context.frame[["timestamp"]].copy()
+        active = self.active_features(requested_features)
+        output = self.output_frame(context)
         if not active:
             return output
         if context.htf_feature_map is None:

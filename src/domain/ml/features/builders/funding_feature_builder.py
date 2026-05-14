@@ -1,28 +1,61 @@
 from __future__ import annotations
 
-from domain.ml.features import config as cfg
 import numpy as np
 import pandas as pd
 
-from domain.ml.features.contracts.feature_builder_contract import FeatureBuilderContract
+from domain.ml.features import config as cfg
+from domain.ml.features.builders.base_feature_builder import FeatureBuilder
 from domain.ml.features.models.feature_context import FeatureContext
 from domain.ml.features.models.feature_spec import feature_param, feature_spec
 
 
-class FundingFeatureBuilder(FeatureBuilderContract):
+class FundingFeatureBuilder(FeatureBuilder):
     block_name = "funding"
     FEATURE_SPECS = {
-        "funding_rate_8h": feature_spec("funding_rate_8h", block_name, "funding_rate", description="Raw funding rate aligned to the main timeframe.", inputs=("funding_rate",)),
-        "funding_rate_zscore_7d": feature_spec("funding_rate_zscore_7d", block_name, "(funding_rate - rolling_mean(funding_rate, {FUNDING_ZSCORE_WINDOW_1H})) / rolling_std(funding_rate, {FUNDING_ZSCORE_WINDOW_1H})", description="Funding rate z-score on a rolling 7-day window.", params=(feature_param("FUNDING_ZSCORE_WINDOW_1H", 24 * 7),), inputs=("funding_rate",)),
-        "funding_rate_change_24h": feature_spec("funding_rate_change_24h", block_name, "funding_rate - funding_rate.shift({FUNDING_CHANGE_LOOKBACK_1H})", description="Funding rate change over the configured lookback.", params=(feature_param("FUNDING_CHANGE_LOOKBACK_1H", 24),), inputs=("funding_rate",)),
-        "longs_overheated_1h": feature_spec("longs_overheated_1h", block_name, "clip(funding_rate_zscore_7d, lower=0)", description="Positive funding z-score only.", dependencies=("funding_rate_zscore_7d",)),
-        "shorts_overheated_1h": feature_spec("shorts_overheated_1h", block_name, "clip(-funding_rate_zscore_7d, lower=0)", description="Negative funding z-score only, sign-flipped.", dependencies=("funding_rate_zscore_7d",)),
+        "funding_rate_8h": feature_spec(
+            "funding_rate_8h",
+            block_name,
+            "funding_rate",
+            description="Raw funding rate aligned to the main timeframe.",
+            inputs=("funding_rate",),
+        ),
+        "funding_rate_zscore_7d": feature_spec(
+            "funding_rate_zscore_7d",
+            block_name,
+            "(funding_rate - rolling_mean(funding_rate, {FUNDING_ZSCORE_WINDOW_1H})) / "
+            "rolling_std(funding_rate, {FUNDING_ZSCORE_WINDOW_1H})",
+            description="Funding rate z-score on a rolling 7-day window.",
+            params=(feature_param("FUNDING_ZSCORE_WINDOW_1H", 24 * 7),),
+            inputs=("funding_rate",),
+        ),
+        "funding_rate_change_24h": feature_spec(
+            "funding_rate_change_24h",
+            block_name,
+            "funding_rate - funding_rate.shift({FUNDING_CHANGE_LOOKBACK_1H})",
+            description="Funding rate change over the configured lookback.",
+            params=(feature_param("FUNDING_CHANGE_LOOKBACK_1H", 24),),
+            inputs=("funding_rate",),
+        ),
+        "longs_overheated_1h": feature_spec(
+            "longs_overheated_1h",
+            block_name,
+            "clip(funding_rate_zscore_7d, lower=0)",
+            description="Positive funding z-score only.",
+            dependencies=("funding_rate_zscore_7d",),
+        ),
+        "shorts_overheated_1h": feature_spec(
+            "shorts_overheated_1h",
+            block_name,
+            "clip(-funding_rate_zscore_7d, lower=0)",
+            description="Negative funding z-score only, sign-flipped.",
+            dependencies=("funding_rate_zscore_7d",),
+        ),
     }
 
     def build(self, context: FeatureContext, requested_features: set[str]) -> pd.DataFrame:
-        active = self.provides().intersection(requested_features)
+        active = self.active_features(requested_features)
         frame = context.frame
-        output = frame[["timestamp"]].copy()
+        output = self.output_frame(context)
         if not active:
             return output
 

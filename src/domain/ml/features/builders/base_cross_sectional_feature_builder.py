@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from domain.ml.features.contracts.feature_builder_contract import FeatureBuilderContract
+from domain.ml.features.builders.base_feature_builder import FeatureBuilder
 from domain.ml.features.models.feature_context import FeatureContext
 from domain.ml.features.models.feature_spec import feature_spec
 
@@ -14,7 +14,7 @@ def _normalize_rank(series: pd.Series) -> pd.Series:
     return (ranked - 1) / (len(series) - 1)
 
 
-class BaseCrossSectionalFeatureBuilder(FeatureBuilderContract):
+class BaseCrossSectionalFeatureBuilder(FeatureBuilder):
     block_name = "cross_sectional"
     FEATURE_SPECS = {
         "cross_sectional_rank_ema_fast_slow_1h": feature_spec(
@@ -27,8 +27,8 @@ class BaseCrossSectionalFeatureBuilder(FeatureBuilderContract):
     }
 
     def build(self, context: FeatureContext, requested_features: set[str]) -> pd.DataFrame:
-        active = self.provides().intersection(requested_features)
-        output = context.frame[["timestamp"]].copy()
+        active = self.active_features(requested_features)
+        output = self.output_frame(context)
         if not active:
             return output
         if context.base_feature_map is None:

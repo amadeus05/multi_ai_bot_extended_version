@@ -4,44 +4,153 @@ from domain.ml.features import config as cfg
 import numpy as np
 import pandas as pd
 
-from domain.ml.features.contracts.feature_builder_contract import FeatureBuilderContract
+from domain.ml.features.builders.base_feature_builder import FeatureBuilder
 from domain.ml.features.indicators import compute_atr, compute_rsi, safe_ratio
 from domain.ml.features.models.feature_context import FeatureContext
 from domain.ml.features.models.feature_spec import feature_param, feature_spec
 
 
-class RegimeFeatureBuilder(FeatureBuilderContract):
+class RegimeFeatureBuilder(FeatureBuilder):
     block_name = "regime"
     FEATURE_SPECS = {
-        "realized_vol_1h": feature_spec("realized_vol_1h", block_name, "rolling_std(log(close / close.shift(1)), {REALIZED_VOL_WINDOW_1H})", description="Realized volatility of 1H log returns.", params=(feature_param("REALIZED_VOL_WINDOW_1H", 24),), inputs=("close",)),
-        "atr_ratio_1h": feature_spec("atr_ratio_1h", block_name, "ATR(high, low, close, 14) / ATR(high, low, close, 100)", description="Short ATR relative to long ATR.", inputs=("high", "low", "close")),
-        "volatility_regime_change_1h": feature_spec("volatility_regime_change_1h", block_name, "ATR(high, low, close, 6) / ATR(high, low, close, 48)", description="Short-vs-long ATR ratio used as a regime shift proxy.", inputs=("high", "low", "close")),
-        "range_compression_1h": feature_spec("range_compression_1h", block_name, "(rolling_max(high, {RANGE_COMPRESSION_SHORT_WINDOW_1H}) - rolling_min(low, {RANGE_COMPRESSION_SHORT_WINDOW_1H})) / (rolling_max(high, {RANGE_COMPRESSION_LONG_WINDOW_1H}) - rolling_min(low, {RANGE_COMPRESSION_LONG_WINDOW_1H}))", description="Short range divided by long range.", params=(feature_param("RANGE_COMPRESSION_SHORT_WINDOW_1H", 12), feature_param("RANGE_COMPRESSION_LONG_WINDOW_1H", 48)), inputs=("high", "low")),
-        "volatility_acceleration_1h": feature_spec("volatility_acceleration_1h", block_name, "volatility_regime_change_1h - volatility_regime_change_1h.shift(3)", description="Three-bar acceleration of the regime change signal.", dependencies=("volatility_regime_change_1h",)),
-        "volume_24h": feature_spec("volume_24h", block_name, "rolling_sum(volume, {VOLUME_24H_WINDOW_1H})", description="Rolling traded volume over the last 24 bars.", params=(feature_param("VOLUME_24H_WINDOW_1H", 24),), inputs=("volume",)),
-        "volume_ratio_1h": feature_spec("volume_ratio_1h", block_name, "volume / rolling_mean(volume, {VOLUME_RATIO_WINDOW_1H})", description="Current volume relative to its rolling mean.", params=(feature_param("VOLUME_RATIO_WINDOW_1H", 24),), inputs=("volume",)),
-        "volume_zscore_1h": feature_spec("volume_zscore_1h", block_name, "(volume - rolling_mean(volume, {VOLUME_ZSCORE_WINDOW_1H})) / rolling_std(volume, {VOLUME_ZSCORE_WINDOW_1H})", description="Volume z-score on a long rolling window.", params=(feature_param("VOLUME_ZSCORE_WINDOW_1H", 24 * 7),), inputs=("volume",)),
-        "dollar_volume_zscore_1h": feature_spec("dollar_volume_zscore_1h", block_name, "(log1p(max(close * volume, 0)) - rolling_mean(log1p(max(close * volume, 0)), {VOLUME_ZSCORE_WINDOW_1H})) / rolling_std(log1p(max(close * volume, 0)), {VOLUME_ZSCORE_WINDOW_1H})", description="Dollar-volume z-score with log scaling.", params=(feature_param("VOLUME_ZSCORE_WINDOW_1H", 24 * 7),), inputs=("close", "volume")),
-        "vol_of_vol_1h": feature_spec("vol_of_vol_1h", block_name, "rolling_std(realized_vol_1h, 12)", description="Volatility of realized volatility.", dependencies=("realized_vol_1h",)),
-        "realized_vol_vs_ema": feature_spec("realized_vol_vs_ema", block_name, "(realized_vol_1h - ema(realized_vol_1h, 48)) / ema(realized_vol_1h, 48)", description="Deviation of realized volatility from its EMA baseline.", dependencies=("realized_vol_1h",)),
-        "volatility_regime_stability": feature_spec("volatility_regime_stability", block_name, "clip(run_length(vol_regime_label(realized_vol_1h, rolling_mean(realized_vol_1h, 96), low=0.8, high=1.2)), 0, 48) / 48", description="Normalized age of the current volatility regime.", dependencies=("realized_vol_1h",)),
-        "high_vol_stress_indicator": feature_spec("high_vol_stress_indicator", block_name, "1{ATR(high, low, close, 14) > 1.1 * ATR(high, low, close, 48) and realized_vol_1h > rolling_quantile(realized_vol_1h, 96, 0.75)}", description="Binary stress flag for expanding ranges during high volatility.", inputs=("high", "low", "close"), dependencies=("realized_vol_1h",)),
-        "vol_regime_classification": feature_spec("vol_regime_classification", block_name, "1{realized_vol_1h > rolling_quantile(realized_vol_1h, 96, 0.33)} + 1{realized_vol_1h > rolling_quantile(realized_vol_1h, 96, 0.67)}", description="Discrete volatility regime bucket: 0 low, 1 normal, 2 high.", dependencies=("realized_vol_1h",)),
-        "rsi_1h": feature_spec("rsi_1h", block_name, "RSI(close, 14) на основном ТФ", description="Relative Strength Index (14).", inputs=("close",)),
-        # Легаси MVP: в importance gain=0; константа для совместимости с метаданными модели.
+        "realized_vol_1h": feature_spec(
+            "realized_vol_1h",
+            block_name,
+            "rolling_std(log(close / close.shift(1)), {REALIZED_VOL_WINDOW_1H})",
+            description="Realized volatility of 1H log returns.",
+            params=(feature_param("REALIZED_VOL_WINDOW_1H", 24),),
+            inputs=("close",),
+        ),
+        "atr_ratio_1h": feature_spec(
+            "atr_ratio_1h",
+            block_name,
+            "ATR(high, low, close, 14) / ATR(high, low, close, 100)",
+            description="Short ATR relative to long ATR.",
+            inputs=("high", "low", "close"),
+        ),
+        "volatility_regime_change_1h": feature_spec(
+            "volatility_regime_change_1h",
+            block_name,
+            "ATR(high, low, close, 6) / ATR(high, low, close, 48)",
+            description="Short-vs-long ATR ratio used as a regime shift proxy.",
+            inputs=("high", "low", "close"),
+        ),
+        "range_compression_1h": feature_spec(
+            "range_compression_1h",
+            block_name,
+            "(rolling_max(high, {RANGE_COMPRESSION_SHORT_WINDOW_1H}) - "
+            "rolling_min(low, {RANGE_COMPRESSION_SHORT_WINDOW_1H})) / "
+            "(rolling_max(high, {RANGE_COMPRESSION_LONG_WINDOW_1H}) - "
+            "rolling_min(low, {RANGE_COMPRESSION_LONG_WINDOW_1H}))",
+            description="Short range divided by long range.",
+            params=(
+                feature_param("RANGE_COMPRESSION_SHORT_WINDOW_1H", 12),
+                feature_param("RANGE_COMPRESSION_LONG_WINDOW_1H", 48),
+            ),
+            inputs=("high", "low"),
+        ),
+        "volatility_acceleration_1h": feature_spec(
+            "volatility_acceleration_1h",
+            block_name,
+            "volatility_regime_change_1h - volatility_regime_change_1h.shift(3)",
+            description="Three-bar acceleration of the regime change signal.",
+            dependencies=("volatility_regime_change_1h",),
+        ),
+        "volume_24h": feature_spec(
+            "volume_24h",
+            block_name,
+            "rolling_sum(volume, {VOLUME_24H_WINDOW_1H})",
+            description="Rolling traded volume over the last 24 bars.",
+            params=(feature_param("VOLUME_24H_WINDOW_1H", 24),),
+            inputs=("volume",),
+        ),
+        "volume_ratio_1h": feature_spec(
+            "volume_ratio_1h",
+            block_name,
+            "volume / rolling_mean(volume, {VOLUME_RATIO_WINDOW_1H})",
+            description="Current volume relative to its rolling mean.",
+            params=(feature_param("VOLUME_RATIO_WINDOW_1H", 24),),
+            inputs=("volume",),
+        ),
+        "volume_zscore_1h": feature_spec(
+            "volume_zscore_1h",
+            block_name,
+            "(volume - rolling_mean(volume, {VOLUME_ZSCORE_WINDOW_1H})) / "
+            "rolling_std(volume, {VOLUME_ZSCORE_WINDOW_1H})",
+            description="Volume z-score on a long rolling window.",
+            params=(feature_param("VOLUME_ZSCORE_WINDOW_1H", 24 * 7),),
+            inputs=("volume",),
+        ),
+        "dollar_volume_zscore_1h": feature_spec(
+            "dollar_volume_zscore_1h",
+            block_name,
+            "(log1p(max(close * volume, 0)) - "
+            "rolling_mean(log1p(max(close * volume, 0)), {VOLUME_ZSCORE_WINDOW_1H})) / "
+            "rolling_std(log1p(max(close * volume, 0)), {VOLUME_ZSCORE_WINDOW_1H})",
+            description="Dollar-volume z-score with log scaling.",
+            params=(feature_param("VOLUME_ZSCORE_WINDOW_1H", 24 * 7),),
+            inputs=("close", "volume"),
+        ),
+        "vol_of_vol_1h": feature_spec(
+            "vol_of_vol_1h",
+            block_name,
+            "rolling_std(realized_vol_1h, 12)",
+            description="Volatility of realized volatility.",
+            dependencies=("realized_vol_1h",),
+        ),
+        "realized_vol_vs_ema": feature_spec(
+            "realized_vol_vs_ema",
+            block_name,
+            "(realized_vol_1h - ema(realized_vol_1h, 48)) / ema(realized_vol_1h, 48)",
+            description="Deviation of realized volatility from its EMA baseline.",
+            dependencies=("realized_vol_1h",),
+        ),
+        "volatility_regime_stability": feature_spec(
+            "volatility_regime_stability",
+            block_name,
+            "clip(run_length(vol_regime_label(realized_vol_1h, rolling_mean(realized_vol_1h, 96), "
+            "low=0.8, high=1.2)), 0, 48) / 48",
+            description="Normalized age of the current volatility regime.",
+            dependencies=("realized_vol_1h",),
+        ),
+        "high_vol_stress_indicator": feature_spec(
+            "high_vol_stress_indicator",
+            block_name,
+            "1{ATR(high, low, close, 14) > 1.1 * ATR(high, low, close, 48) and "
+            "realized_vol_1h > rolling_quantile(realized_vol_1h, 96, 0.75)}",
+            description="Binary stress flag for expanding ranges during high volatility.",
+            inputs=("high", "low", "close"),
+            dependencies=("realized_vol_1h",),
+        ),
+        "vol_regime_classification": feature_spec(
+            "vol_regime_classification",
+            block_name,
+            "1{realized_vol_1h > rolling_quantile(realized_vol_1h, 96, 0.33)} + "
+            "1{realized_vol_1h > rolling_quantile(realized_vol_1h, 96, 0.67)}",
+            description="Discrete volatility regime bucket: 0 low, 1 normal, 2 high.",
+            dependencies=("realized_vol_1h",),
+        ),
+        "rsi_1h": feature_spec(
+            "rsi_1h",
+            block_name,
+            "RSI(close, 14) on the main timeframe",
+            description="Relative Strength Index (14).",
+            inputs=("close",),
+        ),
+        # Legacy MVP: importance gain=0; kept as a compatibility constant for old model metadata.
         "mcc_sign_agreement_btc_24h": feature_spec(
             "mcc_sign_agreement_btc_24h",
             block_name,
             "0",
-            description="Placeholder из legacy train.",
+            description="Placeholder from legacy train.",
             inputs=("close",),
         ),
     }
 
     def build(self, context: FeatureContext, requested_features: set[str]) -> pd.DataFrame:
-        active = self.provides().intersection(requested_features)
+        active = self.active_features(requested_features)
         frame = context.frame
-        output = frame[["timestamp"]].copy()
+        output = self.output_frame(context)
         if not active:
             return output
 
