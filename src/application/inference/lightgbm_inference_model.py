@@ -1,41 +1,19 @@
 from __future__ import annotations
 
-import json
 import logging
 from pathlib import Path
 
 import joblib
 import pandas as pd
 
+from application.inference.artifacts import (
+    load_feature_columns,
+    read_json_file,
+    resolve_trained_model_paths,
+)
 from core.interfaces.model import Model
 
 logger = logging.getLogger(__name__)
-
-
-def resolve_trained_model_paths(
-    *,
-    cwd: Path,
-    model_path_cfg: str,
-    models_dir: str,
-    train_model_name: str,
-) -> tuple[Path, Path]:
-    """
-    Находит артефакты обучения: ``{name}.joblib`` и ``{name}_features.json``.
-    Если ``MODEL_PATH`` указывает на существующий .joblib/.pkl — берём его и json по stem.
-    Иначе — ``{MODELS_DIR}/{TRAIN_MODEL_NAME}.joblib``.
-    """
-    mp = Path(model_path_cfg)
-    if not mp.is_absolute():
-        mp = cwd / mp
-    if mp.exists() and mp.suffix.lower() in (".joblib", ".pkl", ".pickle"):
-        model_path = mp
-    else:
-        md = Path(models_dir)
-        if not md.is_absolute():
-            md = cwd / md
-        model_path = md / f"{train_model_name}.joblib"
-    features_path = model_path.parent / f"{model_path.stem}_features.json"
-    return model_path, features_path
 
 
 def load_lightgbm_inference_model(
@@ -48,20 +26,13 @@ def load_lightgbm_inference_model(
         raise FileNotFoundError(
             f"Модель не найдена: {model_path}. Обучи через runners/run_train.py или задай MODEL_PATH."
         )
-    if not features_path.is_file():
-        raise FileNotFoundError(
-            f"Список фич не найден: {features_path}. Должен лежать рядом с joblib после train."
-        )
-    payload = json.loads(features_path.read_text(encoding="utf-8"))
-    feature_columns = payload.get("feature_columns")
-    if not isinstance(feature_columns, list) or not feature_columns:
-        raise ValueError(f"Некорректный {features_path}: ожидался непустой feature_columns")
+    feature_columns = load_feature_columns(features_path)
     clf = joblib.load(model_path)
     feature_columns = resolve_model_feature_columns(clf, feature_columns, source=str(features_path))
     clip_bounds_path = model_path.parent / f"{model_path.stem}_clip_bounds.json"
     clip_bounds: dict[str, dict[str, float]] | None = None
     if clip_bounds_path.is_file():
-        clip_bounds = json.loads(clip_bounds_path.read_text(encoding="utf-8"))
+        clip_bounds = read_json_file(clip_bounds_path)
     return LightGBMInferenceModel(clf, feature_columns, required_bars=required_bars, clip_bounds=clip_bounds)
 
 
