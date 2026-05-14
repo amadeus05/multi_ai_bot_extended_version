@@ -39,13 +39,15 @@ class PaperDbStateRestorer:
         if not self._storage.journal_session_id:
             return self._skipped("paper restore skipped: EVENT_JOURNAL_SESSION_ID is empty")
 
-        positions = await asyncio.to_thread(self._load_positions)
+        positions, active_rows, closed_trades = await asyncio.to_thread(self._load_state)
         self._portfolio.positions = positions
+        self._restore_portfolio_history(active_rows, closed_trades)
 
         logger.info(
-            "Paper state restored | source=paper_db | session_id=%s | positions=%s",
+            "Paper state restored | source=paper_db | session_id=%s | positions=%s | closed_trades=%s",
             self._storage.journal_session_id,
             len(positions),
+            len(closed_trades),
         )
         return RestoreResult(
             restored=True,
@@ -58,15 +60,18 @@ class PaperDbStateRestorer:
         logger.info(message)
         return RestoreResult(restored=True, source="paper_db", message=message)
 
-    def _load_positions(self) -> list[Position]:
+    def _load_state(self) -> tuple[list[Position], list[dict], list[dict]]:
         driver = self._storage.driver.strip().lower()
         if driver == "sqlite":
-            rows = self._load_sqlite_rows()
+            rows = self._load_sqlite_active_rows()
+            closed_trades = self._load_sqlite_closed_trades()
         elif driver == "supabase":
-            rows = self._load_supabase_rows()
+            rows = self._load_supabase_active_rows()
+            closed_trades = self._load_supabase_closed_trades()
         else:
             logger.info("paper restore skipped: unsupported storage driver %r", self._storage.driver)
             rows = []
+            closed_trades = []
 
         positions: list[Position] = []
         for row in rows:
@@ -84,9 +89,9 @@ class PaperDbStateRestorer:
                     meta=meta,
                 )
             )
-        return positions
+        return positions, rows, closed_trades
 
-    def _load_sqlite_rows(self) -> list:
+    def _load_sqlite_active_rows(self) -> list[dict]:
         connection = SQLiteConnection(self._storage.sqlite_path)
         with connection.connect() as conn:
             table_exists = conn.execute(
@@ -99,7 +104,7 @@ class PaperDbStateRestorer:
             if table_exists is None:
                 return []
 
-            return list(
+            rows = list(
                 conn.execute(
                     """
                     SELECT
@@ -107,6 +112,7 @@ class PaperDbStateRestorer:
                         direction,
                         SUM(remaining_qty) AS amount,
                         SUM(entry_notional_remaining) / NULLIF(SUM(remaining_qty), 0) AS entry_price,
+                        SUM(entry_fee_remaining) AS entry_fee_remaining,
                         MIN(entry_ts) AS entry_ts,
                         MAX(meta_json) AS meta_json
                     FROM active_trade_lots
@@ -117,21 +123,66 @@ class PaperDbStateRestorer:
                     (self._storage.journal_session_id,),
                 )
             )
+        return [dict(row) for row in rows]
 
-    def _load_supabase_rows(self) -> list[dict]:
+    def _load_sqlite_closed_trades(self) -> list[dict]:
+        connection = SQLiteConnection(self._storage.sqlite_path)
+        with connection.connect() as conn:
+            table_exists = conn.execute(
+                """
+                SELECT 1
+                FROM sqlite_master
+                WHERE type = 'table' AND name = 'closed_trades'
+                """
+            ).fetchone()
+            if table_exists is None:
+                return []
+
+            rows = list(
+                conn.execute(
+                    """
+                    SELECT
+                        id,
+                        trade_id,
+                        symbol,
+                        direction,
+                        entry_time,
+                        exit_time,
+                        entry_price,
+                        exit_price,
+                        qty,
+                        pnl,
+                        pnl_pct,
+                        fee,
+                        exit_reason,
+                        duration_minutes
+                    FROM closed_trades
+                    WHERE session_id = ?
+                    ORDER BY exit_time ASC, id ASC
+                    """,
+                    (self._storage.journal_session_id,),
+                )
+            )
+        return [dict(row) for row in rows]
+
+    def _supabase_connection(self) -> SupabaseConnection:
         connection = SupabaseConnection(
             url=self._storage.supabase_url,
             service_key=self._storage.supabase_service_key,
             schema=self._storage.supabase_schema,
         )
         connection.validate_service_key()
+        return connection
+
+    def _load_supabase_active_rows(self) -> list[dict]:
+        connection = self._supabase_connection()
         response = requests.get(
             connection.rest_url("active_trade_lots"),
             headers=connection.headers(),
             params={
                 "session_id": f"eq.{self._storage.journal_session_id}",
                 "remaining_qty": "gt.0.000000000001",
-                "select": "symbol,direction,remaining_qty,entry_price,entry_ts,meta_json",
+                "select": "symbol,direction,remaining_qty,entry_price,entry_ts,entry_fee_remaining,meta_json",
                 "order": "entry_ts.asc",
             },
             timeout=20,
@@ -149,12 +200,14 @@ class PaperDbStateRestorer:
                     "direction": lot["direction"],
                     "amount": 0.0,
                     "notional": 0.0,
+                    "entry_fee_remaining": 0.0,
                     "entry_ts": lot["entry_ts"],
                     "meta_json": lot.get("meta_json") or {},
                 },
             )
             current["amount"] += qty
             current["notional"] += qty * float(lot["entry_price"])
+            current["entry_fee_remaining"] += float(lot.get("entry_fee_remaining") or 0.0)
             if str(lot["entry_ts"]) < str(current["entry_ts"]):
                 current["entry_ts"] = lot["entry_ts"]
             if lot.get("meta_json"):
@@ -165,12 +218,79 @@ class PaperDbStateRestorer:
                 "direction": value["direction"],
                 "amount": value["amount"],
                 "entry_price": value["notional"] / value["amount"] if value["amount"] > 0 else 0.0,
+                "entry_fee_remaining": value["entry_fee_remaining"],
                 "entry_ts": value["entry_ts"],
                 "meta_json": value["meta_json"],
             }
             for value in grouped.values()
             if float(value["amount"]) > 1e-12
         ]
+
+    def _load_supabase_closed_trades(self) -> list[dict]:
+        connection = self._supabase_connection()
+        response = requests.get(
+            connection.rest_url("closed_trades"),
+            headers=connection.headers(),
+            params={
+                "session_id": f"eq.{self._storage.journal_session_id}",
+                "select": ",".join(
+                    [
+                        "id",
+                        "trade_id",
+                        "symbol",
+                        "direction",
+                        "entry_time",
+                        "exit_time",
+                        "entry_price",
+                        "exit_price",
+                        "qty",
+                        "pnl",
+                        "pnl_pct",
+                        "fee",
+                        "exit_reason",
+                        "duration_minutes",
+                    ]
+                ),
+                "order": "exit_time.asc,id.asc",
+            },
+            timeout=20,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        return payload if isinstance(payload, list) else []
+
+    def _restore_portfolio_history(self, active_rows: list[dict], closed_trades: list[dict]) -> None:
+        restored_closed = [self._closed_trade_result(row, idx) for idx, row in enumerate(closed_trades, start=1)]
+        self._portfolio.closed_trade_results = restored_closed
+        self._portfolio._trade_seq = len(restored_closed)
+        self._portfolio._active_trade_number_by_symbol.clear()
+        self._portfolio._entry_fee_pool_by_symbol.clear()
+
+        for offset, row in enumerate(active_rows, start=1):
+            symbol = str(row["symbol"])
+            trade_number = len(restored_closed) + offset
+            self._portfolio._active_trade_number_by_symbol[symbol] = trade_number
+            self._portfolio._entry_fee_pool_by_symbol[symbol] = float(row.get("entry_fee_remaining") or 0.0)
+            self._portfolio._trade_seq = max(self._portfolio._trade_seq, trade_number)
+
+    @staticmethod
+    def _closed_trade_result(row: dict, trade_number: int) -> dict:
+        return {
+            "trade_number": trade_number,
+            "trade_id": row.get("trade_id"),
+            "symbol": str(row.get("symbol", "")),
+            "side": str(row.get("direction", "")).lower(),
+            "entry_price": float(row.get("entry_price") or 0.0),
+            "exit_price": float(row.get("exit_price") or 0.0),
+            "qty": float(row.get("qty") or 0.0),
+            "pnl_pct": float(row.get("pnl_pct") or 0.0),
+            "pnl_abs": float(row.get("pnl") or 0.0),
+            "commission": float(row.get("fee") or 0.0),
+            "entry_ts": row.get("entry_time"),
+            "ts": row.get("exit_time"),
+            "reason": str(row.get("exit_reason") or "CLOSE").upper(),
+            "duration_minutes": float(row.get("duration_minutes") or 0.0),
+        }
 
     @staticmethod
     def _load_meta(raw) -> dict:

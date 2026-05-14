@@ -418,6 +418,47 @@ def test_exit_fill_notifies_closed_trade_with_pnl_and_balance() -> None:
     assert notification.balance == pytest.approx(995.0)
 
 
+def test_exit_notification_sl_tp_counts_include_restored_closed_history() -> None:
+    notifier = RecordingNotifier()
+    portfolio = PortfolioManager(
+        cash={"USDT": 1000.0},
+        positions=[
+            Position(
+                "BTC/USDT",
+                PositionSide.LONG,
+                amount=1.0,
+                entry_price=100.0,
+                meta={"barrier_stop_pct": 0.01, "barrier_take_pct": 0.02},
+            )
+        ],
+        closed_trade_results=[
+            {"symbol": "SOL/USDT", "pnl_abs": -1.0, "reason": "SL"},
+            {"symbol": "ETH/USDT", "pnl_abs": 2.0, "reason": "TP"},
+        ],
+    )
+    engine = make_engine(portfolio=portfolio, notifier=notifier)
+    fill = FillEvent(
+        ts=pd.Timestamp("2024-01-01T01:00:00"),
+        order_id="exit-1",
+        client_order_id="client-exit-1",
+        symbol="BTC/USDT",
+        side=OrderSide.SELL,
+        amount=1.0,
+        price=103.0,
+        fee=0.0,
+        meta={ENGINE_META_EXIT_REASON: "TP"},
+        command_reason="TP",
+        event_id="exit-fill-1",
+    )
+
+    asyncio.run(engine.process_event(fill))
+
+    notification = notifier.trade_exits[0]
+    assert notification.stop_losses_count == 1
+    assert notification.take_profits_count == 2
+    assert notification.winrate_pct == pytest.approx(2 / 3 * 100.0)
+
+
 def test_market_batch_ranks_entry_candidates_before_risk_check() -> None:
     portfolio = PortfolioManager(cash={"USDT": 1000.0})
     risk = OnePositionRisk()
