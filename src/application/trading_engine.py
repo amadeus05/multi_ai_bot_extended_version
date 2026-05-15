@@ -124,6 +124,9 @@ class TradingEngine:
         except Exception:
             logger.exception("Trade exit notification failed")
 
+    def _notifier_wants_signal_charts(self) -> bool:
+        return bool(getattr(self._notifier, "wants_signal_charts", False))
+
     def _fill_meta_reason(self, fill: FillEvent) -> tuple[str | None, str | None]:
         meta = fill.meta or {}
         reason = meta.get(ENGINE_META_EXIT_REASON) or meta.get("reason")
@@ -214,14 +217,16 @@ class TradingEngine:
         stop_price = self._barrier_price(entry_price, side, stop_pct, is_take=False)
         take_price = self._barrier_price(entry_price, side, take_pct, is_take=True)
         direction_prob = float(meta.get("direction_prob", 0.0))
-        chart_path = await self._signal_chart_path(
-            symbol=order.symbol,
-            candles=features,
-            entry_price=entry_price,
-            stop_price=stop_price,
-            take_price=take_price,
-            probability=direction_prob,
-        )
+        chart_path = None
+        if self._notifier_wants_signal_charts():
+            chart_path = await self._signal_chart_path(
+                symbol=order.symbol,
+                candles=features,
+                entry_price=entry_price,
+                stop_price=stop_price,
+                take_price=take_price,
+                probability=direction_prob,
+            )
         return SignalNotification(
             signal_id=int(meta.get("signal_number", self._signal_seq)),
             symbol=order.symbol,

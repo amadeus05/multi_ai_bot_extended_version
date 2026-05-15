@@ -5,6 +5,10 @@ from core.types.notifications import SignalNotification, SystemNotification, Tra
 
 
 class Notifier(ABC):
+    @property
+    def wants_signal_charts(self) -> bool:
+        return False
+
     @abstractmethod
     async def notify_signal(self, notification: SignalNotification) -> None:
         raise NotImplementedError

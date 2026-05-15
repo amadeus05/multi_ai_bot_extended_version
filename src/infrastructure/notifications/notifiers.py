@@ -82,6 +82,10 @@ class TelegramNotifier(Notifier):
         self._timeout = float(timeout)
         self._fail_silently = bool(fail_silently)
 
+    @property
+    def wants_signal_charts(self) -> bool:
+        return True
+
     async def notify_signal(self, notification: SignalNotification) -> None:
         text = format_signal_html(notification)
         if notification.chart_path is not None:
@@ -172,6 +176,10 @@ class TelegramNotifier(Notifier):
 class CompositeNotifier(Notifier):
     def __init__(self, notifiers: Iterable[Notifier]) -> None:
         self._notifiers = tuple(notifiers)
+
+    @property
+    def wants_signal_charts(self) -> bool:
+        return any(notifier.wants_signal_charts for notifier in self._notifiers)
 
     async def notify_signal(self, notification: SignalNotification) -> None:
         await self._dispatch("notify_signal", notification)
