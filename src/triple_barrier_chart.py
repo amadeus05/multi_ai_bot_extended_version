@@ -219,7 +219,17 @@ def draw_chart(
         body_low = min(candle.open, candle.close)
         body_height = abs(candle.close - candle.open) or _minimum_body_height(candles)
 
-        ax.vlines(i, candle.low, candle.high, color=color, linewidth=1.0, zorder=2)
+        wick = ax.vlines(
+            i,
+            candle.low,
+            candle.high,
+            color=color,
+            alpha=0.55,
+            linewidth=0.06,
+            antialiased=False,
+            zorder=2,
+        )
+        wick.set_snap(True)
         ax.add_patch(
             Rectangle(
                 (i - candle_width / 2, body_low),
@@ -227,7 +237,9 @@ def draw_chart(
                 body_height,
                 facecolor=color,
                 edgecolor=color,
-                linewidth=1.0,
+                linewidth=0.0,
+                antialiased=False,
+                snap=True,
                 zorder=3,
             )
         )
@@ -321,7 +333,7 @@ def draw_chart(
 
     if output_path is not None:
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        fig.savefig(output_path, dpi=160)
+        fig.savefig(output_path, dpi=220, facecolor=fig.get_facecolor())
     if show:
         plt.show()
     plt.close(fig)
