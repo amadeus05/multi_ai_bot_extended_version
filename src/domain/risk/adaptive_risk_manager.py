@@ -1,3 +1,5 @@
+import pandas as pd
+
 from core.types.domain_types import Order
 from domain.risk.models.risk_context import RiskContext
 from domain.risk.models.risk_profile import RiskProfile
@@ -35,7 +37,7 @@ class AdaptiveRiskManager(RiskManager):
         self._new_positions_in_bar = 0
 
     def register_trade_result(self, symbol: str, pnl: float, bar_ts, stop_loss_hit: bool = False) -> None:
-        day_key = str(getattr(bar_ts, "date", lambda: bar_ts)())
+        day_key = self._day_key(bar_ts)
         if stop_loss_hit:
             self._sl_per_day[day_key] = self._sl_per_day.get(day_key, 0) + 1
             self._symbol_cooldown_until_bar[symbol] = self._bar_index + self.profile.sl_cooldown_bars
@@ -55,6 +57,34 @@ class AdaptiveRiskManager(RiskManager):
                     f"risk per trade restored to {self._fmt_risk_pct(self.profile.risk_per_trade)}"
                 )
             self._consecutive_losses = 0
+
+    @staticmethod
+    def _day_key(value) -> str:
+        try:
+            return str(pd.Timestamp(value).date())
+        except Exception:
+            return str(getattr(value, "date", lambda: value)())
+
+    def restore_from_closed_trades(self, closed_trades: list[dict]) -> None:
+        """Seed restart-sensitive risk counters from persisted closed trades."""
+        self._sl_per_day = {}
+        self._consecutive_losses = 0
+
+        for row in closed_trades:
+            reason = str(row.get("reason") or row.get("exit_reason") or "").upper()
+            ts = row.get("ts") or row.get("exit_time")
+            if reason == "SL":
+                day_key = self._day_key(ts)
+                self._sl_per_day[day_key] = self._sl_per_day.get(day_key, 0) + 1
+
+            try:
+                pnl = float(row.get("pnl_abs", row.get("pnl", 0.0)) or 0.0)
+            except (TypeError, ValueError):
+                pnl = 0.0
+            if pnl < 0:
+                self._consecutive_losses += 1
+            else:
+                self._consecutive_losses = 0
 
     def _risk_reduction_enabled(self) -> bool:
         return (

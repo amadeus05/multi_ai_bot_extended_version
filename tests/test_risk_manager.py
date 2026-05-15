@@ -170,3 +170,37 @@ def test_risk_manager_logs_risk_reduction_and_restore(capsys) -> None:
     manager.register_trade_result("BTC/USDT", pnl=1.0, bar_ts=pd.Timestamp("2024-10-10T18:00:00"))
     restored = capsys.readouterr().out
     assert "[2024-10-10 18:00:00] ℹ️ Loss streak reset: risk per trade restored to 1.00%" in restored
+
+
+def test_risk_manager_restores_daily_sl_limit_from_closed_trades() -> None:
+    manager = AdaptiveRiskManager(make_profile(max_sl_per_day=2))
+    manager.restore_from_closed_trades(
+        [
+            {"symbol": "BTC/USDT", "reason": "SL", "pnl_abs": -1.0, "ts": "2024-01-01T01:00:00+00:00"},
+            {"symbol": "ETH/USDT", "reason": "SL", "pnl_abs": -1.0, "ts": "2024-01-01T02:00:00+00:00"},
+        ]
+    )
+    manager.set_current_bar(pd.Timestamp("2024-01-01T03:00:00"))
+
+    assert manager.check(make_order("SOL/USDT"), PortfolioManager(cash={"USDT": 1000.0}), exchange=object()) is None
+
+
+def test_risk_manager_restores_loss_streak_for_reduced_sizing() -> None:
+    manager = AdaptiveRiskManager(
+        make_profile(
+            risk_per_trade=0.01,
+            reduce_risk_after_consecutive_losses=2,
+            reduced_risk_per_trade=0.005,
+        )
+    )
+    manager.restore_from_closed_trades(
+        [
+            {"symbol": "BTC/USDT", "reason": "SL", "pnl_abs": -1.0, "ts": pd.Timestamp("2024-01-01T01:00:00")},
+            {"symbol": "ETH/USDT", "reason": "SL", "pnl_abs": -1.0, "ts": pd.Timestamp("2024-01-01T02:00:00")},
+        ]
+    )
+
+    checked = manager.check(make_order("SOL/USDT"), PortfolioManager(cash={"USDT": 1000.0}), exchange=object())
+
+    assert checked is not None
+    assert checked.amount == pytest.approx(2.5)

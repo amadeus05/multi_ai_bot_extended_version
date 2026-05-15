@@ -333,6 +333,7 @@ class PaperStateRestorer:
             portfolio=self._portfolio,
             storage=self._storage,
         ).restore_trading_state()
+        self._engine.restore_risk_history(self._portfolio.closed_trade_results)
         if not self._portfolio.get_open_positions():
             return result
 

@@ -88,6 +88,11 @@ class TradingEngine:
     def set_event_journal(self, journal: EventJournal | None) -> None:
         self._event_journal = journal
 
+    def restore_risk_history(self, closed_trades: list[dict]) -> None:
+        risk = self._deps["risk"]
+        if hasattr(risk, "restore_from_closed_trades"):
+            risk.restore_from_closed_trades(closed_trades)
+
     @staticmethod
     def _tick_price(tick, name: str, fallback: float) -> float:
         value = getattr(tick, name, None)
