@@ -16,12 +16,12 @@ def format_signal_text(notification: SignalNotification) -> str:
             f"▲ {notification.side.upper()}  {_fmt_ts_short(notification.ts)}",
             "",
             "Вход",
-            f"Цена     {_fmt_plain_num(notification.entry_price, 2)}",
+            f"Цена     {_fmt_price(notification.entry_price)}",
             f"Объём    {_fmt_num(notification.amount, 6)} {base_asset}  ({_fmt_balance_short(notional)})",
             f"Баланс   {_fmt_balance(notification.balance)}",
             "",
-            f"🛑 Стоп   {_fmt_plain_num(notification.stop_price, 2)}  - {_fmt_pct_abs(notification.stop_pct)}",
-            f"🎯 Тейк   {_fmt_plain_num(notification.take_price, 2)}  + {_fmt_pct_abs(notification.take_pct)}",
+            f"🛑 Стоп   {_fmt_price(notification.stop_price)}  - {_fmt_pct_abs(notification.stop_pct)}",
+            f"🎯 Тейк   {_fmt_price(notification.take_price)}  + {_fmt_pct_abs(notification.take_pct)}",
             "",
             f"🤖 Long {_fmt_pct_abs(notification.p_long)}  Short {_fmt_pct_abs(notification.p_short)}  gap {_fmt_pct_abs(notification.signal_gap)}",
         ]
@@ -151,6 +151,23 @@ def _fmt_plain_num(value: float | None, digits: int = 2) -> str:
     if value is None:
         return "n/a"
     return f"{float(value):,.{digits}f}".replace(",", " ")
+
+
+def _fmt_price(value: float | None) -> str:
+    if value is None:
+        return "n/a"
+    abs_value = abs(float(value))
+    if abs_value >= 100:
+        digits = 2
+    elif abs_value >= 1:
+        digits = 4
+    elif abs_value >= 0.1:
+        digits = 5
+    elif abs_value >= 0.01:
+        digits = 6
+    else:
+        digits = 8
+    return _fmt_plain_num(value, digits)
 
 
 def _fmt_money(value: float | None) -> str:
