@@ -44,6 +44,10 @@ def _meta_value(meta: dict[str, Any] | None, key: str, default=None):
     return (meta or {}).get(key, default)
 
 
+def _fill_reason(event: FillEvent) -> str | None:
+    return event.command_reason or _meta_value(event.meta, "_engine_exit_reason") or _meta_value(event.meta, "reason")
+
+
 def _duration_minutes(start, end) -> float:
     start_ts = pd.Timestamp(start)
     end_ts = pd.Timestamp(end)
@@ -395,11 +399,13 @@ class SQLiteTradingReadModelRepository:
             conn.execute(
                 """
                 UPDATE orders
-                SET status = 'filled', updated_ts = ?
+                SET status = 'filled',
+                    reason = COALESCE(?, reason),
+                    updated_ts = ?
                 WHERE session_id = ?
                   AND (order_id = ? OR client_order_id = ?)
                 """,
-                (_ts(event.ts), session_id, event.order_id, event.client_order_id),
+                (_fill_reason(event), _ts(event.ts), session_id, event.order_id, event.client_order_id),
             )
             if inserted:
                 self._project_fill_to_trades(conn, session_id, fill_id, event)
@@ -478,7 +484,7 @@ class SQLiteTradingReadModelRepository:
                     pnl,
                     pnl_pct,
                     fee,
-                    event.command_reason or _meta_value(event.meta, "_engine_exit_reason") or _meta_value(event.meta, "reason"),
+                    _fill_reason(event),
                     duration_minutes,
                     _meta_value(meta, "p_long"),
                     _meta_value(meta, "p_short"),

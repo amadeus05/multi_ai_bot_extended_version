@@ -45,6 +45,10 @@ def _meta_value(meta: dict[str, Any] | None, key: str, default=None):
     return (meta or {}).get(key, default)
 
 
+def _fill_reason(event: FillEvent) -> str | None:
+    return event.command_reason or _meta_value(event.meta, "_engine_exit_reason") or _meta_value(event.meta, "reason")
+
+
 def _duration_minutes(start, end) -> float:
     start_ts = pd.Timestamp(start)
     end_ts = pd.Timestamp(end)
@@ -239,9 +243,13 @@ class SupabaseTradingReadModelRepository:
             "meta_json": _json_value(event.meta),
         }
         inserted = self._insert_ignore("fills", row, on_conflict="session_id,fill_id")
+        order_patch = {"status": "filled", "updated_ts": _ts(event.ts)}
+        reason = _fill_reason(event)
+        if reason is not None:
+            order_patch["reason"] = reason
         self._patch(
             "orders",
-            {"status": "filled", "updated_ts": _ts(event.ts)},
+            order_patch,
             {"session_id": f"eq.{session_id}", "order_id": f"eq.{event.order_id}"},
         )
         if inserted:
@@ -311,7 +319,7 @@ class SupabaseTradingReadModelRepository:
                     "pnl": pnl,
                     "pnl_pct": pnl_pct,
                     "fee": fee,
-                    "exit_reason": event.command_reason or _meta_value(event.meta, "_engine_exit_reason") or _meta_value(event.meta, "reason"),
+                    "exit_reason": _fill_reason(event),
                     "duration_minutes": duration_minutes,
                     "p_long": _meta_value(meta, "p_long"),
                     "p_short": _meta_value(meta, "p_short"),
