@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from pathlib import Path
 from typing import Iterable, TextIO
 
 import requests
@@ -82,7 +83,11 @@ class TelegramNotifier(Notifier):
         self._fail_silently = bool(fail_silently)
 
     async def notify_signal(self, notification: SignalNotification) -> None:
-        await self._send(format_signal_html(notification))
+        text = format_signal_html(notification)
+        if notification.chart_path is not None:
+            await self._send_photo(text, notification.chart_path)
+            return
+        await self._send(text)
 
     async def notify_trade_exit(self, notification: TradeExitNotification) -> None:
         await self._send(format_trade_exit_html(notification))
@@ -112,6 +117,14 @@ class TelegramNotifier(Notifier):
                 raise
             logger.exception("Telegram notification failed")
 
+    async def _send_photo(self, caption: str, photo_path: Path) -> None:
+        try:
+            await asyncio.to_thread(self._post_photo, caption, photo_path)
+        except Exception:
+            if not self._fail_silently:
+                raise
+            logger.exception("Telegram photo notification failed")
+
     def _post(self, text: str) -> None:
         response = requests.post(
             f"https://api.telegram.org/bot{self._bot_token}/sendMessage",
@@ -123,6 +136,28 @@ class TelegramNotifier(Notifier):
             },
             timeout=self._timeout,
         )
+        try:
+            response.raise_for_status()
+        except requests.HTTPError:
+            logger.error(
+                "Telegram API error | status=%s | response=%s",
+                response.status_code,
+                response.text,
+            )
+            raise
+
+    def _post_photo(self, caption: str, photo_path: Path) -> None:
+        with Path(photo_path).open("rb") as photo:
+            response = requests.post(
+                f"https://api.telegram.org/bot{self._bot_token}/sendPhoto",
+                data={
+                    "chat_id": self._chat_id,
+                    "caption": caption,
+                    "parse_mode": "HTML",
+                },
+                files={"photo": photo},
+                timeout=self._timeout,
+            )
         try:
             response.raise_for_status()
         except requests.HTTPError:

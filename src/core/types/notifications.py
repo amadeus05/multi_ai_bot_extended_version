@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 import pandas as pd
 
@@ -24,6 +25,7 @@ class SignalNotification:
     proba_threshold: float
     min_signal_gap: float
     balance: float | None = None
+    chart_path: Path | None = None
 
 
 @dataclass(frozen=True)

@@ -1,5 +1,6 @@
 import logging
 from dataclasses import dataclass
+from pathlib import Path
 
 from application.event_journal import EventJournal
 from application.execution_event_deduplicator import ExecutionEventDeduplicator
@@ -27,6 +28,7 @@ from domain.risk.risk_manager import RiskManager
 from domain.ml.labeling.barrier_policy import BarrierPolicy
 from domain.ml.labeling.models import LabelingConfig
 from domain.strategy.strategy_engine import Strategy
+from triple_barrier_chart import render_triple_barrier_chart
 
 
 ENGINE_META_EXIT_REASON = "_engine_exit_reason"
@@ -34,12 +36,15 @@ ENGINE_META_REASON_SUFFIX = "_engine_reason_suffix"
 
 logger = logging.getLogger(__name__)
 
+SIGNAL_CHART_PATH = Path("charts") / "paper_signal_chart.png"
+
 
 @dataclass(frozen=True)
 class _EntryCandidate:
     tick: object
     order: Order
     prediction: dict
+    features: object
     score: float
 
 
@@ -155,12 +160,63 @@ class TradingEngine:
         sign = direction if is_take else -direction
         return float(entry_price) * (1.0 + sign * float(pct))
 
-    def _signal_notification(self, *, tick, order: Order, portfolio: PortfolioManager) -> SignalNotification:
+    async def _signal_chart_path(
+        self,
+        *,
+        symbol: str,
+        candles,
+        entry_price: float,
+        stop_price: float | None,
+        take_price: float | None,
+        probability: float,
+    ) -> Path | None:
+        if stop_price is None or take_price is None:
+            return None
+
+        try:
+            if candles.empty:
+                return None
+
+            output_path = SIGNAL_CHART_PATH
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            render_triple_barrier_chart(
+                candles,
+                entry=entry_price,
+                stop=stop_price,
+                take=take_price,
+                probability=probability,
+                output_path=output_path,
+                title=symbol,
+            )
+            return output_path
+        except Exception:
+            logger.exception("Signal chart generation failed | symbol=%s", symbol)
+            return None
+
+    async def _signal_notification(
+        self,
+        *,
+        tick,
+        order: Order,
+        portfolio: PortfolioManager,
+        features,
+    ) -> SignalNotification:
         meta = order.meta or {}
         side = self._order_position_side(order)
         entry_price = float(order.price if order.price is not None else tick.price)
         stop_pct = _optional_float(meta.get("barrier_stop_pct"))
         take_pct = _optional_float(meta.get("barrier_take_pct"))
+        stop_price = self._barrier_price(entry_price, side, stop_pct, is_take=False)
+        take_price = self._barrier_price(entry_price, side, take_pct, is_take=True)
+        direction_prob = float(meta.get("direction_prob", 0.0))
+        chart_path = await self._signal_chart_path(
+            symbol=order.symbol,
+            candles=features,
+            entry_price=entry_price,
+            stop_price=stop_price,
+            take_price=take_price,
+            probability=direction_prob,
+        )
         return SignalNotification(
             signal_id=int(meta.get("signal_number", self._signal_seq)),
             symbol=order.symbol,
@@ -168,17 +224,18 @@ class TradingEngine:
             ts=getattr(tick, "ts", None),
             entry_price=entry_price,
             amount=float(order.amount),
-            stop_price=self._barrier_price(entry_price, side, stop_pct, is_take=False),
-            take_price=self._barrier_price(entry_price, side, take_pct, is_take=True),
+            stop_price=stop_price,
+            take_price=take_price,
             stop_pct=stop_pct,
             take_pct=take_pct,
             p_long=float(meta.get("p_long", 0.0)),
             p_short=float(meta.get("p_short", 0.0)),
             signal_gap=float(meta.get("signal_gap", 0.0)),
-            direction_prob=float(meta.get("direction_prob", 0.0)),
+            direction_prob=direction_prob,
             proba_threshold=float(meta.get("directional_proba_threshold", 0.0)),
             min_signal_gap=float(meta.get("min_signal_gap", 0.0)),
             balance=float(portfolio.cash.get("USDT", 0.0)),
+            chart_path=chart_path,
         )
 
     def _trade_exit_notification(self, res: dict, portfolio: PortfolioManager) -> TradeExitNotification:
@@ -306,6 +363,7 @@ class TradingEngine:
             tick=tick,
             order=raw_order,
             prediction=prediction,
+            features=df,
             score=float(raw_order.meta.get("score", 0.0)),
         )
 
@@ -323,7 +381,13 @@ class TradingEngine:
         self._signal_seq += 1
         safe_order.meta = safe_order.meta or {}
         safe_order.meta["signal_number"] = self._signal_seq
-        await self._notify_signal(self._signal_notification(tick=candidate.tick, order=safe_order, portfolio=portfolio))
+        notification = await self._signal_notification(
+            tick=candidate.tick,
+            order=safe_order,
+            portfolio=portfolio,
+            features=candidate.features,
+        )
+        await self._notify_signal(notification)
         return PlaceOrderCommand(safe_order, reason="ENTRY", ts=getattr(candidate.tick, "ts", None), source_tick=candidate.tick)
 
     async def _commands_for_entry_tick(self, tick) -> list[TradingCommand]:
