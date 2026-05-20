@@ -1,9 +1,9 @@
 import logging
 from dataclasses import dataclass
-from pathlib import Path
 
 from application.event_journal import EventJournal
 from application.execution_event_deduplicator import ExecutionEventDeduplicator
+from application.trading_notifications import TradingNotificationFactory
 from core.interfaces.data_provider import DataProvider
 from core.interfaces.execution_lifecycle import MarketOrderPreparationExchange
 from core.interfaces.exchange import Exchange
@@ -28,15 +28,12 @@ from domain.risk.risk_manager import RiskManager
 from domain.ml.labeling.barrier_policy import BarrierPolicy
 from domain.ml.labeling.models import LabelingConfig
 from domain.strategy.strategy_engine import Strategy
-from triple_barrier_chart import render_triple_barrier_chart
 
 
 ENGINE_META_EXIT_REASON = "_engine_exit_reason"
 ENGINE_META_REASON_SUFFIX = "_engine_reason_suffix"
 
 logger = logging.getLogger(__name__)
-
-SIGNAL_CHART_PATH = Path("charts") / "paper_signal_chart.png"
 
 
 @dataclass(frozen=True)
@@ -46,12 +43,6 @@ class _EntryCandidate:
     prediction: dict
     features: object
     score: float
-
-
-def _optional_float(value) -> float | None:
-    if value is None:
-        return None
-    return float(value)
 
 
 class TradingEngine:
@@ -84,6 +75,7 @@ class TradingEngine:
         self._event_journal: EventJournal | None = None
         self._notifier = notifier
         self._signal_seq = 0
+        self._notifications = TradingNotificationFactory()
 
     def set_event_journal(self, journal: EventJournal | None) -> None:
         self._event_journal = journal
@@ -156,51 +148,6 @@ class TradingEngine:
         for res in portfolio.closed_trade_results[prev_closed:]:
             await self._notify_trade_exit(self._trade_exit_notification(res, portfolio))
 
-    @staticmethod
-    def _order_position_side(order: Order) -> str:
-        return "LONG" if order.side == OrderSide.BUY else "SHORT"
-
-    @staticmethod
-    def _barrier_price(entry_price: float, side: str, pct: float | None, *, is_take: bool) -> float | None:
-        if pct is None:
-            return None
-        direction = 1.0 if side == "LONG" else -1.0
-        sign = direction if is_take else -direction
-        return float(entry_price) * (1.0 + sign * float(pct))
-
-    async def _signal_chart_path(
-        self,
-        *,
-        symbol: str,
-        candles,
-        entry_price: float,
-        stop_price: float | None,
-        take_price: float | None,
-        probability: float,
-    ) -> Path | None:
-        if stop_price is None or take_price is None:
-            return None
-
-        try:
-            if candles.empty:
-                return None
-
-            output_path = SIGNAL_CHART_PATH
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            render_triple_barrier_chart(
-                candles,
-                entry=entry_price,
-                stop=stop_price,
-                take=take_price,
-                probability=probability,
-                output_path=output_path,
-                title=symbol,
-            )
-            return output_path
-        except Exception:
-            logger.exception("Signal chart generation failed | symbol=%s", symbol)
-            return None
-
     async def _signal_notification(
         self,
         *,
@@ -209,72 +156,17 @@ class TradingEngine:
         portfolio: PortfolioManager,
         features,
     ) -> SignalNotification:
-        meta = order.meta or {}
-        side = self._order_position_side(order)
-        entry_price = float(order.price if order.price is not None else tick.price)
-        stop_pct = _optional_float(meta.get("barrier_stop_pct"))
-        take_pct = _optional_float(meta.get("barrier_take_pct"))
-        stop_price = self._barrier_price(entry_price, side, stop_pct, is_take=False)
-        take_price = self._barrier_price(entry_price, side, take_pct, is_take=True)
-        direction_prob = float(meta.get("direction_prob", 0.0))
-        chart_path = None
-        if self._notifier_wants_signal_charts():
-            chart_path = await self._signal_chart_path(
-                symbol=order.symbol,
-                candles=features,
-                entry_price=entry_price,
-                stop_price=stop_price,
-                take_price=take_price,
-                probability=direction_prob,
-            )
-        return SignalNotification(
-            signal_id=int(meta.get("signal_number", self._signal_seq)),
-            symbol=order.symbol,
-            side=side,
-            ts=getattr(tick, "ts", None),
-            entry_price=entry_price,
-            amount=float(order.amount),
-            stop_price=stop_price,
-            take_price=take_price,
-            stop_pct=stop_pct,
-            take_pct=take_pct,
-            p_long=float(meta.get("p_long", 0.0)),
-            p_short=float(meta.get("p_short", 0.0)),
-            signal_gap=float(meta.get("signal_gap", 0.0)),
-            direction_prob=direction_prob,
-            proba_threshold=float(meta.get("directional_proba_threshold", 0.0)),
-            min_signal_gap=float(meta.get("min_signal_gap", 0.0)),
-            balance=float(portfolio.cash.get("USDT", 0.0)),
-            chart_path=chart_path,
+        return await self._notifications.signal(
+            tick=tick,
+            order=order,
+            portfolio=portfolio,
+            features=features,
+            signal_seq=self._signal_seq,
+            include_chart=self._notifier_wants_signal_charts(),
         )
 
     def _trade_exit_notification(self, res: dict, portfolio: PortfolioManager) -> TradeExitNotification:
-        closed = portfolio.closed_trade_results
-        wins = sum(1 for row in closed if float(row.get("pnl_abs", 0.0)) > 0)
-        tp_count = sum(1 for row in closed if str(row.get("reason", "")).upper() == "TP")
-        sl_count = sum(1 for row in closed if str(row.get("reason", "")).upper() == "SL")
-        total = len(closed)
-        balance = float(portfolio.cash.get("USDT", 0.0))
-        pnl_abs = float(res.get("pnl_abs", 0.0))
-        return TradeExitNotification(
-            trade_number=int(res.get("trade_number", 0)),
-            symbol=str(res.get("symbol", "")),
-            side=str(res.get("side", "")).upper(),
-            reason=str(res.get("reason", "CLOSE")),
-            ts=res.get("ts"),
-            entry_price=float(res.get("entry_price", 0.0)),
-            exit_price=float(res.get("exit_price", 0.0)),
-            qty=float(res.get("qty", 0.0)),
-            pnl_abs=pnl_abs,
-            pnl_pct=float(res.get("pnl_pct", 0.0)),
-            commission=float(res.get("commission", 0.0)),
-            balance=balance,
-            entry_ts=res.get("entry_ts"),
-            balance_before=balance - pnl_abs,
-            winrate_pct=(wins / total * 100.0) if total else None,
-            stop_losses_count=sl_count,
-            take_profits_count=tp_count,
-        )
+        return self._notifications.trade_exit(res, portfolio)
 
     async def _commands_for_exit_tick(
         self,

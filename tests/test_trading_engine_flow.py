@@ -276,6 +276,21 @@ def test_valid_entry_signal_is_notified_after_risk_check() -> None:
     assert commands[0].order.meta["signal_number"] == 1
 
 
+def test_signal_chart_is_not_rendered_unless_notifier_requests_it(monkeypatch) -> None:
+    def fail_render(*_args, **_kwargs):
+        raise AssertionError("chart rendering should be skipped")
+
+    monkeypatch.setattr("application.trading_notifications.render_triple_barrier_chart", fail_render)
+    notifier = RecordingNotifier()
+    engine = make_engine(notifier=notifier)
+
+    commands = asyncio.run(engine.process_event(MarketEvent(make_tick())))
+
+    assert len(commands) == 1
+    assert len(notifier.signals) == 1
+    assert notifier.signals[0].chart_path is None
+
+
 def test_exit_check_runs_before_entry_and_returns_close_command_for_long_position() -> None:
     data = FakeDataProvider()
     exit_manager = FakeExitManager(price=94.0, reason="SL")
