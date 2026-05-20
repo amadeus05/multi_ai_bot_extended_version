@@ -77,9 +77,12 @@ class WalkForwardRunner:
 
         predictions = pd.concat(prediction_frames, ignore_index=True)
         predictions["timestamp"] = pd.to_datetime(predictions["timestamp"], errors="coerce")
+        if "decision_time" not in predictions.columns:
+            predictions["decision_time"] = predictions["timestamp"]
+        predictions["decision_time"] = pd.to_datetime(predictions["decision_time"], errors="coerce")
         predictions = (
-            predictions.dropna(subset=["timestamp"])
-            .sort_values(["timestamp", "symbol"])
+            predictions.dropna(subset=["timestamp", "decision_time"])
+            .sort_values(["decision_time", "symbol"])
             .reset_index(drop=True)
         )
         return WalkForwardRunResult(
@@ -98,6 +101,9 @@ class WalkForwardRunner:
 
         normalized = predictions.copy()
         normalized["timestamp"] = pd.to_datetime(normalized["timestamp"], errors="coerce")
+        if "decision_time" not in normalized.columns:
+            normalized["decision_time"] = normalized["timestamp"]
+        normalized["decision_time"] = pd.to_datetime(normalized["decision_time"], errors="coerce")
         normalized["symbol"] = normalized["symbol"].astype(str)
         normalized["p_short"] = normalized["p_short"].astype(float)
         normalized["p_long"] = normalized["p_long"].astype(float)
@@ -105,4 +111,4 @@ class WalkForwardRunner:
             normalized["fold"] = int(fold_idx)
         else:
             normalized["fold"] = normalized["fold"].astype(int)
-        return normalized
+        return normalized[["timestamp", "symbol", "decision_time", "p_short", "p_long", "fold"]]

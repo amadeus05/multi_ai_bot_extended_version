@@ -23,6 +23,9 @@ class HistoricalMultiSymbolReplayProvider(DataProvider):
         for symbol, frame in frames.items():
             out = frame.copy()
             out["timestamp"] = pd.to_datetime(out["timestamp"], errors="coerce")
+            if "decision_time" not in out.columns:
+                out["decision_time"] = out["timestamp"]
+            out["decision_time"] = pd.to_datetime(out["decision_time"], errors="coerce").fillna(out["timestamp"])
             out = out.dropna(subset=["timestamp"]).sort_values("timestamp").reset_index(drop=True)
             if not out.empty:
                 out["symbol"] = symbol
@@ -62,7 +65,8 @@ class HistoricalMultiSymbolReplayProvider(DataProvider):
             if start_idx >= len(frame):
                 continue
             for idx in range(start_idx, len(frame) - 1):
-                rows.append((pd.Timestamp(frame["timestamp"].iloc[idx + 1]), symbol, idx + 1))
+                replay_ts = pd.Timestamp(frame["decision_time"].iloc[idx + 1])
+                rows.append((replay_ts, symbol, idx + 1))
         rows.sort(key=lambda item: (item[0], item[1]))
 
         batch: list[tuple[pd.Timestamp, str, int]] = []
@@ -87,7 +91,7 @@ class HistoricalMultiSymbolReplayProvider(DataProvider):
 
     @staticmethod
     def _tick_from_row(symbol: str, row) -> Tick:
-        ts = pd.Timestamp(row["timestamp"])
+        ts = pd.Timestamp(row.get("decision_time", row["timestamp"]))
         if hasattr(ts, "tz_convert") and ts.tzinfo is not None:
             ts = ts.tz_convert(None)
         px = float(row.get("open", row.get("close", 0.0)))

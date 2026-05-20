@@ -28,7 +28,10 @@ class RecordingAdapter:
 
     def fit_predict_fold(self, fold: FoldData) -> FoldPrediction:
         self.folds.append(fold)
-        predictions = fold.test_frame[["timestamp", "symbol"]].copy()
+        prediction_columns = ["timestamp", "symbol"]
+        if "decision_time" in fold.test_frame.columns:
+            prediction_columns.append("decision_time")
+        predictions = fold.test_frame[prediction_columns].copy()
         predictions["p_short"] = 0.25
         predictions["p_long"] = 0.75
         return FoldPrediction(
@@ -77,11 +80,33 @@ def test_walk_forward_runner_applies_purge_and_normalizes_predictions() -> None:
 
     assert len(adapter.folds) == 2
     assert len(adapter.folds[0].train_timestamps) == len(adapter.folds[0].original_train_timestamps) - 1
-    assert list(result.predictions.columns) == ["timestamp", "symbol", "p_short", "p_long", "fold"]
+    assert list(result.predictions.columns) == ["timestamp", "symbol", "decision_time", "p_short", "p_long", "fold"]
     assert result.predictions["symbol"].tolist() == sorted(result.predictions["symbol"].tolist())
     assert result.predictions["p_long"].eq(0.75).all()
     assert result.fold_details[0]["train_timestamps"] == len(adapter.folds[0].train_timestamps)
     assert result.feature_columns == ["feature"]
+
+
+def test_walk_forward_runner_preserves_explicit_decision_time() -> None:
+    frame = make_frame()
+    frame["decision_time"] = frame["timestamp"] + pd.Timedelta(hours=1)
+    adapter = RecordingAdapter()
+    runner = WalkForwardRunner(
+        config=WalkForwardRunConfig(
+            n_splits=2,
+            split_mode="tscv",
+            monthly_train_months=1,
+            monthly_test_months=1,
+            monthly_window_mode="expanding",
+            purge_gap=0,
+        ),
+        adapter=adapter,
+    )
+
+    result = runner.run(frame)
+
+    assert "decision_time" in result.predictions.columns
+    assert (result.predictions["decision_time"] > result.predictions["timestamp"]).all()
 
 
 def test_walk_forward_runner_skips_adapter_rejected_folds() -> None:

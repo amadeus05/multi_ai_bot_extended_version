@@ -253,8 +253,8 @@ class MasterFeatureBuilder:
 
     @staticmethod
     def _merge_feature_block(base_df: pd.DataFrame, feature_block: pd.DataFrame) -> pd.DataFrame:
-        if feature_block.empty or list(feature_block.columns) == ["timestamp"]:
+        if feature_block.empty or set(feature_block.columns).issubset({"timestamp", "decision_time"}):
             return base_df
-        extra_columns = [column for column in feature_block.columns if column != "timestamp"]
+        extra_columns = [column for column in feature_block.columns if column not in {"timestamp", "decision_time"}]
         deduped_block = feature_block.loc[:, ["timestamp"] + extra_columns]
         return base_df.merge(deduped_block, on="timestamp", how="left")

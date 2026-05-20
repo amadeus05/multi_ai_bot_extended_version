@@ -22,6 +22,10 @@ def load_training_frame(dataset_dir: str, symbols: list[str], timeframe: str) ->
         return pd.DataFrame()
     out = pd.concat(frames, ignore_index=True)
     out["timestamp"] = pd.to_datetime(out["timestamp"], errors="coerce")
+    if "decision_time" not in out.columns:
+        out["decision_time"] = out["timestamp"]
+    out["decision_time"] = pd.to_datetime(out["decision_time"], errors="coerce")
+    out["decision_time"] = out["decision_time"].fillna(out["timestamp"])
     out = out.dropna(subset=["timestamp", "Target"]).sort_values("timestamp").reset_index(drop=True)
     out.replace([float("inf"), float("-inf")], pd.NA, inplace=True)
     return out

@@ -104,7 +104,10 @@ class LightGbmWalkForwardAdapter:
         fold_acc = float((y_pred == y_test.to_numpy()).mean())
         fold_auc = float(roc_auc_score(y_test, y_proba[:, 1]))
 
-        predictions = test_df[["timestamp", "symbol"]].copy()
+        prediction_columns = ["timestamp", "symbol"]
+        if "decision_time" in test_df.columns:
+            prediction_columns.append("decision_time")
+        predictions = test_df[prediction_columns].copy()
         predictions["symbol"] = predictions["symbol"].astype(str)
         predictions["p_short"] = y_proba[:, 0].astype(float)
         predictions["p_long"] = y_proba[:, 1].astype(float)

@@ -46,9 +46,24 @@ class WebSocketProvider(DataProvider):
         return self._mapper.to_api_symbol(normalized)
 
     @staticmethod
-    def _kline_to_row(symbol: str, kline) -> dict:
+    def _ensure_decision_time(frame: pd.DataFrame, timeframe_ms: int) -> pd.DataFrame:
+        if frame.empty or "timestamp" not in frame.columns:
+            return frame.copy()
+        out = frame.copy()
+        out["timestamp"] = pd.to_datetime(out["timestamp"], errors="coerce")
+        if "decision_time" not in out.columns:
+            out["decision_time"] = out["timestamp"] + pd.to_timedelta(timeframe_ms, unit="ms")
+        else:
+            out["decision_time"] = pd.to_datetime(out["decision_time"], errors="coerce")
+            missing = out["decision_time"].isna()
+            out.loc[missing, "decision_time"] = out.loc[missing, "timestamp"] + pd.to_timedelta(timeframe_ms, unit="ms")
+        return out
+
+    @staticmethod
+    def _kline_to_row(symbol: str, kline, timeframe_ms: int) -> dict:
         return {
             "timestamp": pd.to_datetime(kline.open_time, unit="ms", utc=True).tz_convert(None),
+            "decision_time": pd.to_datetime(kline.open_time + timeframe_ms, unit="ms", utc=True).tz_convert(None),
             "open": kline.open,
             "high": kline.high,
             "low": kline.low,
@@ -62,6 +77,7 @@ class WebSocketProvider(DataProvider):
     def _event_to_row(symbol: str, event) -> dict:
         return {
             "timestamp": pd.to_datetime(event.start_ms, unit="ms", utc=True).tz_convert(None),
+            "decision_time": pd.to_datetime(event.end_ms, unit="ms", utc=True).tz_convert(None),
             "open": event.open_price,
             "high": event.high_price,
             "low": event.low_price,
@@ -143,7 +159,7 @@ class WebSocketProvider(DataProvider):
             last_ms = int(existing["timestamp"].iloc[-1].timestamp() * 1000)
             start_ms = max(start_ms, last_ms + htf_ms)
         fresh = self._service.fetch_klines(symbol, self._htf_timeframe, start_ms, end_ms) if start_ms <= end_ms else []
-        fresh_df = pd.DataFrame([self._kline_to_row(symbol, candle) for candle in fresh])
+        fresh_df = pd.DataFrame([self._kline_to_row(symbol, candle, htf_ms) for candle in fresh])
         merged = pd.concat([existing, fresh_df], ignore_index=True) if not existing.empty else fresh_df
         self._htf_history[symbol] = self._context_assembler.dedupe_rows(merged).tail(6000).reset_index(drop=True)
 
@@ -169,8 +185,13 @@ class WebSocketProvider(DataProvider):
             htf_frame = self._htf_history.get(subscribed_symbol, pd.DataFrame())
             if main_frame.empty or htf_frame.empty:
                 continue
-            base_map[subscribed_symbol] = self._enrich_history(subscribed_symbol, main_frame.copy())
-            htf_map[subscribed_symbol] = htf_frame.copy()
+            tf_ms = self._service.get_timeframe_ms(self._timeframe)
+            htf_ms = self._service.get_timeframe_ms(self._htf_timeframe)
+            base_map[subscribed_symbol] = self._enrich_history(
+                subscribed_symbol,
+                self._ensure_decision_time(main_frame, tf_ms),
+            )
+            htf_map[subscribed_symbol] = self._ensure_decision_time(htf_frame, htf_ms)
         if symbol not in base_map or symbol not in htf_map:
             return pd.DataFrame()
         result = self._feature_builder.build(base_map, htf_map)
@@ -193,7 +214,7 @@ class WebSocketProvider(DataProvider):
         start_ms = now_ms - max(1, bars + 10) * tf_ms
         htf_start_ms = now_ms - max(1, (bars // max(1, htf_ms // tf_ms)) + 20) * htf_ms
         klines = self._service.fetch_klines(normalized, self._timeframe, start_ms, now_ms)
-        loaded = pd.DataFrame([self._kline_to_row(normalized, candle) for candle in klines])
+        loaded = pd.DataFrame([self._kline_to_row(normalized, candle, tf_ms) for candle in klines])
         merged = pd.concat([current, loaded], ignore_index=True) if not current.empty else loaded
         merged = self._context_assembler.dedupe_rows(merged)
         self._history[normalized] = merged

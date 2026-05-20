@@ -225,19 +225,20 @@ class DatasetPipeline:
                 if fetch_start <= self.cfg.end_ts_ms:
                     logger.info("[%s-%s] syncing missing klines from %s...", symbol, timeframe, fetch_start)
                     fresh = self.bybit.fetch_klines(symbol, timeframe, fetch_start, self.cfg.end_ts_ms)
-                    fresh_df = self._klines_to_frame(symbol, fresh)
+                    fresh_df = self._klines_to_frame(symbol, fresh, timeframe_ms=timeframe_ms)
                     merged = pd.concat([existing, fresh_df], ignore_index=True)
                 else:
                     logger.info("[%s-%s] kline cache has gaps in range, rebuilding from scratch", symbol, timeframe)
                     fresh = self.bybit.fetch_klines(symbol, timeframe, self.cfg.start_ts_ms, self.cfg.end_ts_ms)
-                    merged = self._klines_to_frame(symbol, fresh)
+                    merged = self._klines_to_frame(symbol, fresh, timeframe_ms=timeframe_ms)
         else:
             logger.info("[%s-%s] no kline cache found, full download", symbol, timeframe)
             fresh = self.bybit.fetch_klines(symbol, timeframe, self.cfg.start_ts_ms, self.cfg.end_ts_ms)
-            merged = self._klines_to_frame(symbol, fresh)
+            merged = self._klines_to_frame(symbol, fresh, timeframe_ms=timeframe_ms)
 
         if merged.empty:
             return merged
+        merged = self._ensure_decision_time(merged, timeframe_ms=timeframe_ms)
         merged = self.context_assembler.dedupe_rows(merged)
         start_ts = pd.to_datetime(self.cfg.start_ts_ms, unit="ms", utc=True).tz_convert(None)
         end_ts = pd.to_datetime(self.cfg.end_ts_ms, unit="ms", utc=True).tz_convert(None)
@@ -246,13 +247,32 @@ class DatasetPipeline:
         return merged
 
     @staticmethod
-    def _klines_to_frame(symbol: str, klines: list) -> pd.DataFrame:
+    def _ensure_decision_time(frame: pd.DataFrame, *, timeframe_ms: int) -> pd.DataFrame:
+        out = frame.copy()
+        out["timestamp"] = pd.to_datetime(out["timestamp"], errors="coerce")
+        if "decision_time" not in out.columns:
+            out["decision_time"] = out["timestamp"] + pd.to_timedelta(timeframe_ms, unit="ms")
+        else:
+            out["decision_time"] = pd.to_datetime(out["decision_time"], errors="coerce")
+            missing = out["decision_time"].isna()
+            out.loc[missing, "decision_time"] = out.loc[missing, "timestamp"] + pd.to_timedelta(timeframe_ms, unit="ms")
+        return out
+
+    @staticmethod
+    def _klines_to_frame(symbol: str, klines: list, *, timeframe_ms: int) -> pd.DataFrame:
         if not klines:
-            return pd.DataFrame(columns=["timestamp", "open", "high", "low", "close", "volume", "quote_volume", "symbol"])
+            return pd.DataFrame(
+                columns=["timestamp", "decision_time", "open", "high", "low", "close", "volume", "quote_volume", "symbol"]
+            )
         return pd.DataFrame(
             [
                 {
                     "timestamp": pd.to_datetime(candle.open_time, unit="ms", utc=True).tz_convert(None),
+                    "decision_time": pd.to_datetime(
+                        candle.open_time + timeframe_ms,
+                        unit="ms",
+                        utc=True,
+                    ).tz_convert(None),
                     "open": candle.open,
                     "high": candle.high,
                     "low": candle.low,

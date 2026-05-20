@@ -17,7 +17,10 @@ class FeatureBuilder(ABC):
         return self.provides().intersection(requested_features)
 
     def output_frame(self, context: FeatureContext) -> pd.DataFrame:
-        return context.frame[["timestamp"]].copy()
+        columns = ["timestamp"]
+        if "decision_time" in context.frame.columns:
+            columns.append("decision_time")
+        return context.frame[columns].copy()
 
     def provides(self) -> set[str]:
         return set(self.feature_specs())

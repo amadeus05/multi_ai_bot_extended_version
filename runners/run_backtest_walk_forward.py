@@ -31,6 +31,10 @@ from infrastructure.exchanges.simulation.simulated_exchange import SimulatedExch
 def _filter_backtest_frame(frame: pd.DataFrame, *, start: str, end: str) -> pd.DataFrame:
     out = frame.copy()
     out["timestamp"] = pd.to_datetime(out["timestamp"], errors="coerce")
+    if "decision_time" not in out.columns:
+        out["decision_time"] = out["timestamp"]
+    out["decision_time"] = pd.to_datetime(out["decision_time"], errors="coerce")
+    out["decision_time"] = out["decision_time"].fillna(out["timestamp"])
     out = out.dropna(subset=["timestamp"])
     if start:
         t0 = pd.to_datetime(start, errors="coerce")
@@ -43,6 +47,13 @@ def _filter_backtest_frame(frame: pd.DataFrame, *, start: str, end: str) -> pd.D
             raise ValueError(f"BACKTEST_END did not parse: {end!r}")
         out = out.loc[out["timestamp"] <= t1]
     return out.sort_values("timestamp").reset_index(drop=True)
+
+
+def _prediction_time(row) -> pd.Timestamp:
+    value = getattr(row, "decision_time", None)
+    if value is None or pd.isna(value):
+        value = row.timestamp
+    return pd.Timestamp(value)
 
 
 def _load_symbol_frame(settings, symbol: str) -> pd.DataFrame:
@@ -88,7 +99,7 @@ async def main() -> None:
     wf_result = wf_pipeline.run(dataset)
     WalkForwardPipeline.save_artifacts(wf_result.predictions, wf_result.fold_details, train_cfg)
     lookup = {
-        (pd.Timestamp(row.timestamp), str(row.symbol)): (float(row.p_short), float(row.p_long))
+        (_prediction_time(row), str(row.symbol)): (float(row.p_short), float(row.p_long))
         for row in wf_result.predictions.itertuples(index=False)
     }
     wf_model = WalkForwardPredictionModel(lookup=lookup, feature_columns=wf_result.feature_columns)
@@ -105,8 +116,10 @@ async def main() -> None:
             symbol_predictions = wf_result.predictions.loc[wf_result.predictions["symbol"].astype(str) == symbol]
             if symbol_predictions.empty:
                 raise RuntimeError(f"Walk-forward produced no OOS predictions for {symbol}.")
-            first_pred_ts = pd.Timestamp(symbol_predictions["timestamp"].min())
-            matches = frame.index[pd.to_datetime(frame["timestamp"], errors="coerce") >= first_pred_ts].tolist()
+            prediction_time_col = "decision_time" if "decision_time" in symbol_predictions.columns else "timestamp"
+            replay_time_col = "decision_time" if "decision_time" in frame.columns else "timestamp"
+            first_pred_ts = pd.Timestamp(symbol_predictions[prediction_time_col].min())
+            matches = frame.index[pd.to_datetime(frame[replay_time_col], errors="coerce") >= first_pred_ts].tolist()
             if not matches:
                 raise RuntimeError(f"No replay rows at or after first OOS prediction timestamp {first_pred_ts} for {symbol}.")
             first_indices.append(int(matches[0]))

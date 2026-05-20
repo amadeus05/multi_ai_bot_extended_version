@@ -5,7 +5,7 @@ import pandas as pd
 
 from domain.ml.labeling.models import LabelingConfig
 
-BASE_OUTPUT_COLUMNS = ["timestamp", "open", "high", "low", "close", "volume"]
+BASE_OUTPUT_COLUMNS = ["timestamp", "decision_time", "open", "high", "low", "close", "volume"]
 BARRIER_OUTPUT_COLUMNS = ["barrier_stop_pct", "barrier_take_pct"]
 
 
@@ -225,6 +225,11 @@ def triple_barrier_labeling(df: pd.DataFrame, cfg: LabelingConfig) -> pd.DataFra
 
 def finalize_feature_frame(df: pd.DataFrame, feature_columns: list[str], cfg: LabelingConfig) -> pd.DataFrame:
     output = df.copy()
+    if "decision_time" not in output.columns:
+        output["decision_time"] = output["timestamp"]
+    else:
+        output["decision_time"] = pd.to_datetime(output["decision_time"], errors="coerce")
+        output["decision_time"] = output["decision_time"].fillna(output["timestamp"])
     effective_horizons = compute_effective_horizons(output, cfg)
     max_horizon = int(np.max(effective_horizons)) if len(effective_horizons) > 0 else max(1, cfg.adaptive_horizon.base_horizon)
     if max_horizon > 0:

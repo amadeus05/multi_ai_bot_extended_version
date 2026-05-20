@@ -35,7 +35,8 @@ class OosPredictionReplayModel(Model):
     def predict(self, features: pd.DataFrame) -> dict:
         if features.empty:
             return {"score": 0.0, "p_long": 0.5, "p_short": 0.5}
-        ts = _normalize_timestamp(features["timestamp"].iloc[-1])
+        time_column = "decision_time" if "decision_time" in features.columns else "timestamp"
+        ts = _normalize_timestamp(features[time_column].iloc[-1])
         sym = str(features["symbol"].iloc[-1])
         hit = self._lookup.get((ts, sym))
         if hit is None:

@@ -8,8 +8,9 @@ logger = logging.getLogger(__name__)
 
 TARGET_COLUMN = "Target"
 TIMESTAMP_COLUMN = "timestamp"
+DECISION_TIME_COLUMN = "decision_time"
 SYMBOL_COLUMN = "symbol"
-RESERVED_COLUMNS = {TARGET_COLUMN, TIMESTAMP_COLUMN, "barrier_stop_pct", "barrier_take_pct"}
+RESERVED_COLUMNS = {TARGET_COLUMN, TIMESTAMP_COLUMN, DECISION_TIME_COLUMN, "barrier_stop_pct", "barrier_take_pct"}
 EXCLUDED_RAW_FEATURE_COLUMNS = {"open", "high", "low", "close", "volume"}
 
 
