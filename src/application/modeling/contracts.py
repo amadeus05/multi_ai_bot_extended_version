@@ -22,6 +22,7 @@ class ModelingDataset:
     frame: pd.DataFrame
     feature_columns: list[str]
     unique_timestamps: np.ndarray | None = None
+    prediction_frame: pd.DataFrame | None = None
     metadata: dict = field(default_factory=dict)
 
     def resolved_unique_timestamps(self) -> np.ndarray:
@@ -39,6 +40,7 @@ class FoldData:
     train_frame: pd.DataFrame
     test_frame: pd.DataFrame
     feature_columns: list[str]
+    prediction_test_frame: pd.DataFrame | None = None
 
 
 @dataclass

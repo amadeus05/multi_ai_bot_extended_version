@@ -54,6 +54,14 @@ class WalkForwardRunner:
 
             train_df = prepared.frame.loc[prepared.frame["timestamp"].isin(set(train_ts))].copy()
             test_df = prepared.frame.loc[prepared.frame["timestamp"].isin(set(test_ts))].copy()
+            prediction_source = prepared.prediction_frame if prepared.prediction_frame is not None else prepared.frame
+            if len(test_ts):
+                prediction_test_df = prediction_source.loc[
+                    (prediction_source["timestamp"] >= test_ts[0])
+                    & (prediction_source["timestamp"] <= test_ts[-1])
+                ].copy()
+            else:
+                prediction_test_df = prediction_source.iloc[0:0].copy()
             fold = FoldData(
                 fold_idx=int(fold_idx),
                 original_train_timestamps=original_train_ts,
@@ -62,6 +70,7 @@ class WalkForwardRunner:
                 train_frame=train_df,
                 test_frame=test_df,
                 feature_columns=list(prepared.feature_columns),
+                prediction_test_frame=prediction_test_df,
             )
             if train_df.empty or test_df.empty or self._adapter.should_skip_fold(fold):
                 continue

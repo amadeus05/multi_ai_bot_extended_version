@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from application.modeling.contracts import FoldData, FoldPrediction, ModelingDataset, WalkForwardRunConfig
 from application.modeling.adapters.factory import create_walk_forward_adapter
+from application.modeling.adapters import lightgbm as lightgbm_adapter_module
 from application.modeling.adapters.lightgbm import LightGbmWalkForwardAdapter
 from application.modeling.walk_forward import WalkForwardRunner
 from core.config.train_config import TrainConfig
@@ -133,3 +135,56 @@ def test_create_walk_forward_adapter_returns_registered_lightgbm_adapter() -> No
     adapter = create_walk_forward_adapter("lightgbm", train_cfg=TrainConfig.from_env())
 
     assert isinstance(adapter, LightGbmWalkForwardAdapter)
+
+
+def test_lightgbm_walk_forward_predicts_all_test_rows_without_target_hindsight(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeModel:
+        def predict(self, x):
+            return np.ones(len(x), dtype=int)
+
+        def predict_proba(self, x):
+            proba = np.zeros((len(x), 2), dtype=float)
+            proba[:, 0] = 0.25
+            proba[:, 1] = 0.75
+            return proba
+
+    def fake_fit_model_with_internal_eval(**_kwargs):
+        return FakeModel(), 10, {}
+
+    monkeypatch.setattr(lightgbm_adapter_module, "fit_model_with_internal_eval", fake_fit_model_with_internal_eval)
+
+    cfg = TrainConfig.from_env()
+    cfg.use_symbol_feature = False
+    cfg.enable_feature_clip = False
+    cfg.regime_aware_weighting = False
+    cfg.train_feature_subset = ""
+    frame = make_frame(periods=12)
+    frame["Target"] = [1, -1, 0, 1, -1, 0, 1, -1, 0, 1, -1, 0]
+    adapter = LightGbmWalkForwardAdapter(train_cfg=cfg)
+    prepared = adapter.prepare_dataset(frame)
+    prediction_frame = prepared.prediction_frame
+    assert prediction_frame is not None
+    neutral_timestamps = set(frame.loc[frame["Target"] == 0, "timestamp"])
+    assert not prepared.frame["timestamp"].isin(neutral_timestamps).any()
+    assert prediction_frame["Target"].eq(0).any()
+    fold = FoldData(
+        fold_idx=1,
+        original_train_timestamps=prepared.unique_timestamps[:6],
+        train_timestamps=prepared.unique_timestamps[:6],
+        test_timestamps=prepared.unique_timestamps[6:],
+        train_frame=prepared.frame.loc[prepared.frame["timestamp"].isin(prepared.unique_timestamps[:6])].copy(),
+        test_frame=prepared.frame.loc[prepared.frame["timestamp"].isin(prepared.unique_timestamps[6:])].copy(),
+        feature_columns=prepared.feature_columns,
+        prediction_test_frame=prediction_frame.loc[
+            (prediction_frame["timestamp"] >= prepared.unique_timestamps[6])
+            & (prediction_frame["timestamp"] <= prepared.unique_timestamps[-1])
+        ].copy(),
+    )
+
+    result = adapter.fit_predict_fold(fold)
+
+    assert len(result.predictions) == len(fold.prediction_test_frame)
+    assert result.fold_details["prediction_rows"] == len(fold.prediction_test_frame)
+    assert result.fold_details["test_rows"] == len(fold.test_frame)
+    assert result.predictions["timestamp"].isin(neutral_timestamps).any()
+    assert len(result.y_true) == len(fold.test_frame)

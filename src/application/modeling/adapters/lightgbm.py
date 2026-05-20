@@ -36,6 +36,10 @@ class LightGbmWalkForwardAdapter:
             raise RuntimeError("Walk-forward: empty dataset.")
 
         self._best_iterations = []
+        full_prediction_frame = dataset.copy()
+        full_prediction_frame["Target"] = full_prediction_frame["Target"].astype(int)
+        full_prediction_frame["symbol"] = full_prediction_frame["symbol"].astype("category")
+
         raw_labels = dataset["Target"].astype(int)
         prepared = dataset.loc[raw_labels != 0].copy()
         prepared["Target"] = prepared["Target"].astype(int).map({-1: 0, 1: 1})
@@ -49,7 +53,8 @@ class LightGbmWalkForwardAdapter:
         return ModelingDataset(
             frame=prepared,
             feature_columns=list(feature_columns),
-            unique_timestamps=np.sort(prepared["timestamp"].dropna().unique()),
+            unique_timestamps=np.sort(full_prediction_frame["timestamp"].dropna().unique()),
+            prediction_frame=full_prediction_frame,
         )
 
     def should_skip_fold(self, fold: FoldData) -> bool:
@@ -60,6 +65,7 @@ class LightGbmWalkForwardAdapter:
     def fit_predict_fold(self, fold: FoldData) -> FoldPrediction:
         train_df = fold.train_frame
         test_df = fold.test_frame
+        prediction_test_df = fold.prediction_test_frame if fold.prediction_test_frame is not None else test_df
         feature_columns = fold.feature_columns
 
         clip_bounds = build_feature_clip_bounds(
@@ -71,11 +77,13 @@ class LightGbmWalkForwardAdapter:
         )
         train_df = apply_feature_clip_bounds(train_df, clip_bounds)
         test_df = apply_feature_clip_bounds(test_df, clip_bounds)
+        prediction_test_df = apply_feature_clip_bounds(prediction_test_df, clip_bounds)
 
         x_train = train_df[feature_columns]
         y_train = train_df["Target"]
         x_test = test_df[feature_columns]
         y_test = test_df["Target"]
+        x_prediction = prediction_test_df[feature_columns]
         w_train = compute_sample_weights(
             frame=train_df,
             half_life_days=self._cfg.sample_weight_half_life_days,
@@ -101,24 +109,26 @@ class LightGbmWalkForwardAdapter:
 
         y_pred = model.predict(x_test)
         y_proba = model.predict_proba(x_test)
+        prediction_proba = model.predict_proba(x_prediction)
         fold_acc = float((y_pred == y_test.to_numpy()).mean())
         fold_auc = float(roc_auc_score(y_test, y_proba[:, 1]))
 
         prediction_columns = ["timestamp", "symbol"]
-        if "decision_time" in test_df.columns:
+        if "decision_time" in prediction_test_df.columns:
             prediction_columns.append("decision_time")
-        predictions = test_df[prediction_columns].copy()
+        predictions = prediction_test_df[prediction_columns].copy()
         predictions["symbol"] = predictions["symbol"].astype(str)
-        predictions["p_short"] = y_proba[:, 0].astype(float)
-        predictions["p_long"] = y_proba[:, 1].astype(float)
+        predictions["p_short"] = prediction_proba[:, 0].astype(float)
+        predictions["p_long"] = prediction_proba[:, 1].astype(float)
         predictions["fold"] = int(fold.fold_idx)
 
         details = {
             "fold": int(fold.fold_idx),
             "split_mode": self._cfg.split_mode,
             "train_rows": int(len(train_df)),
-            "prediction_rows": int(len(test_df)),
+            "prediction_rows": int(len(prediction_test_df)),
             "test_rows": int(len(test_df)),
+            "all_test_rows": int(len(prediction_test_df)),
             "purged_timestamps": int(self._cfg.purge_gap),
             "train_start": str(train_df["timestamp"].iloc[0]),
             "train_end": str(train_df["timestamp"].iloc[-1]),
